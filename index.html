@@ -83,52 +83,37 @@
                 return;
             }
 
-            // 1. Kloning Elemen (Agar kita bebas memanipulasi tanpa merusak UI asli)
-            const clonedElement = sourceElement.cloneNode(true);
-            
-            // Pastikan clone terlihat 100% secara visual meskipun source-nya display: none
-            clonedElement.style.display = 'block'; 
-            clonedElement.style.visibility = 'visible';
-            clonedElement.style.opacity = '1';
-            clonedElement.style.position = 'static';
-            
-            // 2. Buat container pembungkus "Off-Screen"
-            const container = document.createElement('div');
-            container.style.position = 'absolute';
-            // Sejajarkan vertikal dengan layar saat ini agar tidak dicrop oleh sistem rendering
-            container.style.top = window.scrollY + 'px'; 
-            // Lempar sejauh mungkin ke KIRI agar tidak terlihat pengguna (anti merusak UI)
-            container.style.left = '-10000px'; 
-            // Pastikan tidak tertutup background body website (penyebab BLANK/KOSONG)
-            container.style.zIndex = '99999'; 
-            container.style.background = 'white';
-            container.style.width = isLandscape ? '1120px' : '800px';
-            
-            container.appendChild(clonedElement);
-            document.body.appendChild(container);
-
-            // 3. Konfigurasi html2pdf
+            // KUNCI KEBERHASILAN: Menggunakan fitur 'onclone' bawaan html2pdf.
+            // Kita membiarkan elemen di layar asli tersembunyi dengan rapi.
+            // Namun di dalam dokumen kloningan yang dipotret mesin, kita paksa buka batasannya.
             const opt = {
               margin:       15,
               filename:     filename,
               image:        { type: 'jpeg', quality: 0.98 },
               html2canvas:  { 
                 scale: 2, 
-                useCORS: true, 
-                // KUNCI: Beritahu html2canvas posisi vertikal aktual container
-                scrollY: window.scrollY, 
+                useCORS: true,
+                onclone: (clonedDoc) => {
+                    const el = clonedDoc.getElementById(elementId);
+                    if (el) {
+                        // Telusuri ke atas dan buka bungkus "overflow: hidden" agar tercetak penuh
+                        let parent = el.parentElement;
+                        while (parent && parent.tagName !== 'BODY') {
+                            parent.style.overflow = 'visible';
+                            parent.style.height = 'auto';
+                            parent.style.width = 'auto';
+                            parent.style.position = 'static';
+                            parent = parent.parentElement;
+                        }
+                    }
+                }
               },
               jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
             };
 
-            // 4. Proses memotret dan ubah ke PDF, setelah itu membuang bayangan
-            window.html2pdf().set(opt).from(container).save().then(() => {
-                document.body.removeChild(container);
-                resolve();
-            }).catch(err => {
-                document.body.removeChild(container);
-                reject(err);
-            });
+            window.html2pdf().set(opt).from(sourceElement).save()
+                .then(resolve)
+                .catch(reject);
         });
     };
 
@@ -603,8 +588,8 @@
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Disembunyikan murni dengan display:none dan akan diproses secara virtual */}
-          <div style={{ display: 'none' }}>
+          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
+          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
             
             {/* Template Formulir Maba (Lebar Aktual 800px) */}
             <div id="pdf-formulir-template-dashboard" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
@@ -1104,8 +1089,8 @@
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Disembunyikan murni dengan display:none dan akan diproses secara virtual */}
-          <div style={{ display: 'none' }}>
+          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
+          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
             <div id="pdf-formulir-template" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
@@ -1297,8 +1282,8 @@
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Disembunyikan murni dengan display:none dan akan diproses secara virtual */}
-          <div style={{ display: 'none' }}>
+          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
+          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
             
             {/* Laporan Admin Lanskap (Lebar A4 Lanskap 1120px) */}
             <div id="pdf-database-template" style={{ width: '1120px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
@@ -1382,4 +1367,4 @@
     root.render(<App />);
   </script>
 </body>
-</html>
+</html>  
