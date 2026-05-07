@@ -1,0 +1,24 @@
+{
+  "name": "pmbusindo",
+  "version": "1.0.0",
+  "description": "PMB USINDO 2026/2027 - Pendaftaran Mahasiswa Baru",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static HTML project - no build step required'",
+    "test": "echo 'No tests configured yet'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hardihanto/pmbusindo.git"
+  },
+  "keywords": [
+    "pmb",
+    "usindo",
+    "pendaftaran"
+  ],
+  "author": "Hardi Hanto",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
