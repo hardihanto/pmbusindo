@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PMB USINDO 2026/2027</title>
   
+  <!-- Favicon / Ikon Website -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='%23b91c1c' d='M256 48l256 120-256 120L0 168 256 48zm0 288l-152-71.3V384c0 35.3 68.1 64 152 64s152-28.7 152-64V264.7L256 336z'/></svg>" type="image/svg+xml">
+  
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -33,7 +36,8 @@
       const [currentView, setCurrentView] = useState('landing');
       const [isPdfReady, setIsPdfReady] = useState(false);
       const [db, setDb] = useState([]);
-      const [currentUser, setCurrentUser] = useState(null);
+      const [currentUser, setCurrentUser] = useState(null); // Pendaftar baru (Success Page)
+      const [loggedInStudent, setLoggedInStudent] = useState(null); // State untuk mahasiswa yang login
       const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
       const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
@@ -63,8 +67,16 @@
         setDb(newDb);
         localStorage.setItem('pmb_database', JSON.stringify(newDb));
         setCurrentUser(newUser);
+        setLoggedInStudent(newUser); // Langsung login-kan setelah mendaftar
         setCurrentView('success');
         showToast('Data Pendaftaran Berhasil Disimpan!', 'success');
+        window.scrollTo(0, 0);
+      };
+
+      const handleStudentLogin = (user) => {
+        setLoggedInStudent(user);
+        setCurrentView('student-dashboard');
+        showToast('Berhasil Login Calon Mahasiswa!', 'success');
         window.scrollTo(0, 0);
       };
 
@@ -87,32 +99,41 @@
           {/* Navigation Bar */}
           <nav className="bg-red-700 text-white shadow-md sticky top-0 z-10 border-b-4 border-yellow-400">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16 items-center">
+              <div className="flex justify-between h-16 items-center overflow-x-auto no-scrollbar">
                 <div 
-                  className="flex items-center gap-2 cursor-pointer" 
+                  className="flex items-center gap-2 cursor-pointer flex-shrink-0 mr-4" 
                   onClick={() => {setCurrentView('landing'); window.scrollTo(0,0);}}
                 >
                   <i className="fa-solid fa-graduation-cap text-yellow-400 text-3xl"></i>
-                  <span className="font-bold text-xl tracking-tight">PMB USINDO</span>
+                  <span className="font-bold text-lg md:text-xl tracking-tight">PMB USINDO</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4">
+                <div className="flex gap-1 md:gap-2 flex-shrink-0">
                   <button 
                     onClick={() => {setCurrentView('landing'); window.scrollTo(0,0);}}
-                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'landing' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors text-sm md:text-base ${currentView === 'landing' ? 'bg-red-900' : 'hover:bg-red-800'}`}
                   >
-                    <i className="fa-solid fa-house text-lg"></i> <span className="hidden sm:inline">Beranda</span>
+                    <i className="fa-solid fa-house"></i> <span className="hidden lg:inline">Beranda</span>
                   </button>
                   <button 
                     onClick={() => {setCurrentView('form'); window.scrollTo(0,0);}}
-                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'form' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors text-sm md:text-base ${currentView === 'form' ? 'bg-red-900' : 'hover:bg-red-800'}`}
                   >
-                    <i className="fa-solid fa-user-plus text-lg"></i> <span className="hidden sm:inline">Daftar</span>
+                    <i className="fa-solid fa-user-plus"></i> <span className="hidden lg:inline">Daftar</span>
                   </button>
+                  
+                  {/* Menu Login/Dashboard Mahasiswa */}
+                  <button 
+                    onClick={() => {setCurrentView(loggedInStudent ? 'student-dashboard' : 'student-login'); window.scrollTo(0,0);}}
+                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors text-sm md:text-base ${(currentView === 'student-login' || currentView === 'student-dashboard') ? 'bg-yellow-500 text-red-900 font-bold' : 'bg-yellow-400 hover:bg-yellow-500 text-red-900 font-bold'}`}
+                  >
+                    <i className="fa-solid fa-user-graduate"></i> <span className="hidden sm:inline">{loggedInStudent ? 'Dashboard Maba' : 'Login Maba'}</span>
+                  </button>
+
                   <button 
                     onClick={() => {setCurrentView('admin'); window.scrollTo(0,0);}}
-                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'admin' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+                    className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors text-sm md:text-base ${currentView === 'admin' ? 'bg-red-900' : 'hover:bg-red-800'}`}
                   >
-                    <i className="fa-solid fa-database text-lg"></i> <span className="hidden sm:inline">Admin</span>
+                    <i className="fa-solid fa-database"></i> <span className="hidden lg:inline">Admin</span>
                   </button>
                 </div>
               </div>
@@ -123,7 +144,13 @@
           <main className="flex-grow flex flex-col">
             {currentView === 'landing' && <LandingPage setView={setCurrentView} />}
             {currentView === 'form' && <RegistrationForm submitForm={saveToDb} />}
-            {currentView === 'success' && <SuccessPage user={currentUser} isPdfReady={isPdfReady} showToast={showToast} />}
+            {currentView === 'success' && <SuccessPage user={currentUser} isPdfReady={isPdfReady} showToast={showToast} setView={setCurrentView} />}
+            
+            {/* Student Login & Dashboard Route */}
+            {currentView === 'student-login' && <StudentLogin db={db} onLogin={handleStudentLogin} showToast={showToast} />}
+            {currentView === 'student-dashboard' && <StudentDashboard student={loggedInStudent} onLogout={() => { setLoggedInStudent(null); setCurrentView('landing'); showToast('Berhasil Keluar', 'info'); }} />}
+
+            {/* Admin Route */}
             {currentView === 'admin' && (
               !isAdminLoggedIn ? (
                  <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} showToast={showToast} />
@@ -168,7 +195,169 @@
       );
     }
 
-    // 0. Admin Login Component
+    // --- STUDENT COMPONENTS ---
+    function StudentLogin({ db, onLogin, showToast }) {
+      const [nik, setNik] = useState('');
+      const [tanggalLahir, setTanggalLahir] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        const foundStudent = db.find(user => user.nik === nik && user.tanggalLahir === tanggalLahir);
+        
+        if (foundStudent) {
+          onLogin(foundStudent);
+        } else {
+          showToast('Data tidak ditemukan. Pastikan NIK dan Tanggal Lahir sesuai saat pendaftaran!', 'error');
+        }
+      };
+
+      return (
+        <div className="flex-grow flex items-center justify-center p-6 bg-slate-100">
+          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-yellow-400">
+            <div className="flex flex-col items-center mb-8 text-center">
+              <div className="bg-yellow-100 p-4 rounded-full mb-4">
+                <i className="fa-solid fa-user-graduate text-yellow-600 text-4xl"></i>
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800">Login Calon Mahasiswa</h2>
+              <p className="text-slate-500 text-sm mt-2">Masuk untuk melihat instruksi pembayaran formulir pendaftaran.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">NIK (Sesuai KTP/KK)</label>
+                <input 
+                  required 
+                  type="number" 
+                  value={nik} 
+                  onChange={(e) => setNik(e.target.value)} 
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" 
+                  placeholder="Masukkan 16 Digit NIK" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Tanggal Lahir</label>
+                <input 
+                  required 
+                  type="date" 
+                  value={tanggalLahir} 
+                  onChange={(e) => setTanggalLahir(e.target.value)} 
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" 
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 text-lg"
+              >
+                Masuk Dashboard
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function StudentDashboard({ student, onLogout }) {
+      if (!student) return null;
+
+      // WhatsApp Message Formatting
+      const waNumber = "6281929009212";
+      const waMessage = `Halo Panitia PMB USINDO. Saya ingin mengonfirmasi pembayaran biaya pendaftaran.\n\nBerikut format lampiran bukti transfer saya:\n${student.nama}_[ISI TANGGAL TRANSFER]_[ISI NOMINAL]\n\nMohon untuk divalidasi. Terima kasih.`;
+      const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
+
+      const copyRekening = () => {
+        navigator.clipboard.writeText("1754519044").then(() => {
+          alert("Nomor rekening berhasil disalin!");
+        });
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto w-full p-4 sm:p-6 lg:p-8 my-4">
+          <div className="flex justify-between items-center mb-6">
+             <h2 className="text-2xl font-bold text-red-800">Dashboard Calon Mahasiswa</h2>
+             <button onClick={onLogout} className="text-slate-500 hover:text-red-600 font-semibold flex items-center gap-2 transition">
+               <i className="fa-solid fa-right-from-bracket"></i> Keluar
+             </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Profil Singkat */}
+            <div className="md:col-span-1 bg-white rounded-2xl shadow-md border border-slate-200 p-6">
+               <div className="text-center mb-4 border-b pb-4">
+                 <div className="w-20 h-20 bg-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-slate-400 text-3xl">
+                   <i className="fa-solid fa-user"></i>
+                 </div>
+                 <h3 className="font-bold text-lg text-slate-800 uppercase">{student.nama}</h3>
+                 <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded border border-yellow-200">Menunggu Pembayaran</span>
+               </div>
+               <div className="text-sm space-y-3 text-slate-600">
+                 <p><span className="block text-xs text-slate-400 font-medium">No. Registrasi:</span> <strong className="text-slate-800">PMB-{student.id}</strong></p>
+                 <p><span className="block text-xs text-slate-400 font-medium">Program Studi:</span> <strong className="text-slate-800">{student.programStudi}</strong></p>
+                 <p><span className="block text-xs text-slate-400 font-medium">No. HP / WA:</span> <strong className="text-slate-800">{student.noHp}</strong></p>
+               </div>
+            </div>
+
+            {/* Instruksi Pembayaran */}
+            <div className="md:col-span-2 space-y-6">
+              
+              <div className="bg-white rounded-2xl shadow-md border-t-4 border-blue-600 p-6 sm:p-8">
+                <h3 className="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                  <i className="fa-solid fa-building-columns text-blue-600"></i> Instruksi Pembayaran Formulir
+                </h3>
+                <p className="text-slate-600 mb-6">Silakan lakukan pembayaran registrasi/formulir pendaftaran via Transfer Bank ke rekening resmi universitas di bawah ini:</p>
+                
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 relative">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="bg-white px-3 py-1 rounded shadow-sm border font-extrabold text-orange-500 italic text-xl">BNI</div>
+                    <div>
+                      <p className="text-sm text-slate-500">Bank Tujuan</p>
+                      <p className="font-bold text-slate-800">Bank Negara Indonesia (BNI)</p>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <p className="text-sm text-slate-500">Nomor Rekening</p>
+                    <div className="flex items-center gap-3">
+                      <p className="font-mono text-2xl font-bold text-slate-900 tracking-wider">17-545-190-44</p>
+                      <button onClick={copyRekening} className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 bg-blue-50 px-2 py-1 rounded" title="Salin Rekening">
+                        <i className="fa-regular fa-copy"></i> Salin
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Atas Nama</p>
+                    <p className="font-bold text-slate-800 uppercase">YAYASAN SEHATI INDONESIA MAJU</p>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5 mb-6">
+                  <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+                    <i className="fa-solid fa-circle-exclamation"></i> Format Konfirmasi & Lampiran
+                  </h4>
+                  <p className="text-sm text-yellow-900 mb-2">Saat mengirim bukti transfer via WhatsApp, mohon ubah teks sesuai format berikut:</p>
+                  <code className="block bg-white p-3 rounded border border-yellow-300 text-sm text-slate-800 font-mono">
+                    Nama Lengkap tanpa gelar_Tanggal transfer_Nominal Transfer<br/><br/>
+                    <span className="text-slate-500 italic">// Contoh:</span><br/>
+                    Rosi Rosiana_05 Juni 2026_2.000.000
+                  </code>
+                </div>
+
+                <a 
+                  href={waLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full block text-center bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition duration-200 transform hover:-translate-y-1"
+                >
+                  <i className="fa-brands fa-whatsapp text-xl mr-2"></i> Konfirmasi Pembayaran via WhatsApp
+                </a>
+                <p className="text-center text-xs text-slate-400 mt-3">Klik tombol di atas untuk mengirim pesan konfirmasi & melampirkan foto struk transfer Anda.</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- ADMIN COMPONENT ---
     function AdminLogin({ onLogin, showToast }) {
       const [username, setUsername] = useState('');
       const [password, setPassword] = useState('');
@@ -229,7 +418,6 @@
       );
     }
 
-    // 1. Landing Page Component
     function LandingPage({ setView }) {
       return (
         <div className="flex-grow flex flex-col items-center p-6 bg-slate-50 w-full">
@@ -302,8 +490,119 @@
             </div>
           </div>
 
+          {/* FITUR UNGGULAN: BEASISWA SECTION */}
+          <div className="w-full bg-red-50 py-16 border-y border-red-200 mt-12 shadow-inner">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-12">
+                <span className="bg-yellow-400 text-red-900 font-bold px-5 py-1.5 rounded-full text-sm uppercase shadow-sm inline-block mb-4">Fitur Unggulan</span>
+                <h3 className="text-3xl md:text-4xl font-extrabold text-red-800 uppercase tracking-wider drop-shadow-sm mb-3">Keterangan Beasiswa</h3>
+                <p className="text-slate-600 max-w-2xl mx-auto text-lg">Universitas Sehati Indonesia (USINDO) menyediakan berbagai jalur beasiswa untuk mempermudah langkah Anda meraih gelar sarjana.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                {/* 1. Beasiswa Akademik */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-star text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Akademik</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku untuk freshgraduate yang menduduki Peringkat 1-10 di sekolah asal.</p>
+                  <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-2 rounded border border-yellow-200 mt-auto text-center">
+                    Potongan SPP 30% <br/>(Selama 1 Tahun)
+                  </div>
+                </div>
+
+                {/* 2. Beasiswa Non Akademik */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-trophy text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Non Akademik</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku untuk freshgraduate yang pernah menjuarai lomba di bidang olahraga dan seni.</p>
+                  <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-2 rounded border border-yellow-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Selama 1 Tahun)
+                  </div>
+                </div>
+
+                {/* 3. Beasiswa Anak Guru */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-chalkboard-user text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Anak Guru</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku untuk anak yang masih dalam satu Kartu Keluarga (KK) dengan orang tua.</p>
+                  <div className="bg-green-100 text-green-800 text-xs font-bold px-3 py-2 rounded border border-green-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Sampai Lulus)
+                  </div>
+                </div>
+
+                {/* 4. Beasiswa Anak Nakes */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-user-nurse text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Anak Nakes</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku untuk anak tenaga kesehatan yang masih satu KK dengan orang tua.</p>
+                  <div className="bg-green-100 text-green-800 text-xs font-bold px-3 py-2 rounded border border-green-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Sampai Lulus)
+                  </div>
+                </div>
+
+                {/* 5. Beasiswa Tahfidz Qur'an */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-book-quran text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Tahfidz Qur'an</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku khusus untuk calon mahasiswa yang minimal memiliki hafalan 5 Juz.</p>
+                  <div className="bg-green-100 text-green-800 text-xs font-bold px-3 py-2 rounded border border-green-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Sampai Lulus)
+                  </div>
+                </div>
+
+                {/* 6. Beasiswa Alumni SMK Sehati */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-school text-red-600 text-xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Alumni SMK Sehati</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku secara khusus untuk seluruh alumni dari semua angkatan lulusan.</p>
+                  <div className="bg-green-100 text-green-800 text-xs font-bold px-3 py-2 rounded border border-green-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Sampai Lulus)
+                  </div>
+                </div>
+
+                {/* 7. Beasiswa 1 Desa 1 Sarjana */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-tree-city text-red-600 text-xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa 1 Desa 1 Sarjana</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku khusus bagi Aparatur Desa atau Anak dari Aparatur Desa setempat.</p>
+                  <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-2 rounded border border-yellow-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Selama 1 Tahun)
+                  </div>
+                </div>
+
+                {/* 8. Beasiswa Kader Posyandu/BKKBN */}
+                <div className="bg-white rounded-2xl p-6 shadow-md border-b-4 border-yellow-400 hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+                  <div className="bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-hand-holding-medical text-red-600 text-2xl"></i>
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">Beasiswa Kader Posyandu</h4>
+                  <p className="text-sm text-slate-600 mb-4 flex-grow">Berlaku bagi pendaftar yang merupakan anggota/kader Posyandu, BKKBN, atau DPPKB.</p>
+                  <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-2 rounded border border-yellow-200 mt-auto text-center">
+                    Potongan SPP 20% <br/>(Selama 1 Tahun)
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
           {/* Faculties Section */}
-          <div className="w-full max-w-6xl py-12">
+          <div className="w-full max-w-6xl py-12 mt-6">
             <h3 className="text-3xl font-bold text-center text-red-800 mb-10 uppercase tracking-wider drop-shadow-sm">Fakultas Yang Tersedia</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-2xl shadow-md border border-yellow-200 overflow-hidden transform transition hover:-translate-y-1">
@@ -373,7 +672,6 @@
       );
     }
 
-    // 2. Registration Form Component
     function RegistrationForm({ submitForm }) {
       const [formData, setFormData] = useState({
         nama: '', nisn: '', nik: '', tempatLahir: '', tanggalLahir: '',
@@ -511,8 +809,7 @@
       );
     }
 
-    // 3. Success Page & PDF Generator
-    function SuccessPage({ user, isPdfReady, showToast }) {
+    function SuccessPage({ user, isPdfReady, showToast, setView }) {
       const [isGenerating, setIsGenerating] = useState(false);
 
       const downloadPDF = () => {
@@ -549,29 +846,31 @@
             <i className="fa-solid fa-circle-check text-green-500 text-7xl mx-auto mb-6 block"></i>
             <h2 className="text-3xl font-bold text-slate-800 mb-2">Pendaftaran Berhasil!</h2>
             <p className="text-slate-600 mb-8">
-              Terima kasih, <strong>{user.nama}</strong>. Data pendaftaran Anda untuk program studi <strong>{user.programStudi}</strong> telah berhasil disimpan di sistem kami.
+              Terima kasih, <strong>{user.nama}</strong>. Data pendaftaran Anda telah tersimpan. Silakan unduh PDF dan lihat cara pembayaran.
             </p>
 
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-8 text-left">
-              <p className="text-sm text-slate-500 mb-1">Nomor Registrasi:</p>
-              <p className="font-mono font-bold text-lg text-blue-900 mb-3">PMB-{user.id}</p>
-              <p className="text-sm text-slate-500 mb-1">Langkah Selanjutnya:</p>
-              <p className="text-sm text-slate-700">Silakan unduh bukti pendaftaran di bawah ini. Formulir ini wajib dibawa pada saat proses validasi dan daftar ulang di kampus.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <button 
+                onClick={downloadPDF}
+                disabled={!isPdfReady || isGenerating}
+                className={`w-full flex items-center justify-center gap-2 py-4 px-4 rounded-lg font-bold text-white transition shadow-lg ${!isPdfReady || isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+              >
+                {isGenerating ? (
+                   <span className="animate-pulse">Membuat PDF...</span>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-download text-xl"></i> Unduh PDF
+                  </>
+                )}
+              </button>
+              
+              <button 
+                onClick={() => {setView('student-dashboard'); window.scrollTo(0,0);}}
+                className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-lg font-bold bg-yellow-400 hover:bg-yellow-500 text-red-900 transition shadow-lg"
+              >
+                 <i className="fa-solid fa-money-bill-wave text-xl"></i> Lanjut Pembayaran
+              </button>
             </div>
-
-            <button 
-              onClick={downloadPDF}
-              disabled={!isPdfReady || isGenerating}
-              className={`w-full flex items-center justify-center gap-2 py-4 px-6 rounded-lg font-bold text-white transition shadow-lg ${!isPdfReady || isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
-            >
-              {isGenerating ? (
-                 <span className="animate-pulse">Sedang Membuat PDF...</span>
-              ) : (
-                <>
-                  <i className="fa-solid fa-download text-2xl"></i> Download Formulir (PDF)
-                </>
-              )}
-            </button>
           </div>
 
           {/* Hidden Template for PDF Rendering */}
@@ -625,7 +924,6 @@
       );
     }
 
-    // 4. Admin Dashboard Component
     function AdminDashboard({ db, isPdfReady, showToast, onLogout }) {
       const [isExporting, setIsExporting] = useState(false);
 
@@ -773,7 +1071,6 @@
       );
     }
 
-    // 5. FOMO Notification Component
     function FomoNotification({ db }) {
       const [isVisible, setIsVisible] = useState(false);
       const [fomoData, setFomoData] = useState({ name: '', prodi: '', time: '' });
