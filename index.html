@@ -9,22 +9,6 @@
   <meta name="description" content="Pendaftaran Mahasiswa Baru (PMB) Universitas Sehati Indonesia (USINDO) Tahun Akademik 2026/2027. Lulusan USINDO Siap Kerja. Tersedia berbagai beasiswa menarik! Daftar sekarang.">
   <meta name="keywords" content="PMB USINDO, Universitas Sehati Indonesia, Pendaftaran Mahasiswa Baru 2026, Kuliah di Karawang, Kampus Karawang, Beasiswa Kuliah, S1 Teknik Informatika, S1 Ilmu Kesehatan Masyarakat, Ilmu Hukum, Pendaftaran Kuliah Online">
   <meta name="author" content="Universitas Sehati Indonesia (USINDO)">
-  <meta name="robots" content="index, follow">
-  <meta name="language" content="Indonesian">
-  
-  <!-- Open Graph / Facebook / WhatsApp -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://www.usindo.ac.id/">
-  <meta property="og:title" content="PMB USINDO 2026/2027 - Pendaftaran Mahasiswa Baru">
-  <meta property="og:description" content="Pendaftaran Mahasiswa Baru Universitas Sehati Indonesia (USINDO) 2026/2027. Tersedia Fakultas Ilmu Kesehatan, Hukum & Ilmu Sosial, dan Teknik.">
-  <meta property="og:image" content="https://assyifateknologinusantara.com/wp-content/uploads/2026/05/usindo.jpeg">
-
-  <!-- Twitter Card -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://www.usindo.ac.id/">
-  <meta property="twitter:title" content="PMB USINDO 2026/2027 - Universitas Sehati Indonesia">
-  <meta property="twitter:description" content="Kuliah? Usindo Aja! Pendaftaran Mahasiswa Baru (PMB) Universitas Sehati Indonesia (USINDO) Tahun Akademik 2026/2027.">
-  <meta property="twitter:image" content="https://assyifateknologinusantara.com/wp-content/uploads/2026/05/usindo.jpeg">
   
   <!-- Favicon / Ikon Website -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='%23b91c1c' d='M256 48l256 120-256 120L0 168 256 48zm0 288l-152-71.3V384c0 35.3 68.1 64 152 64s152-28.7 152-64V264.7L256 336z'/></svg>" type="image/svg+xml">
@@ -38,6 +22,17 @@
   <!-- HTML2PDF via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+  <!-- Setup Import Map Untuk Firebase di Babel Standalone -->
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+      }
+    }
+  </script>
+
   <!-- React & ReactDOM via CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -49,7 +44,19 @@
   
   <div id="root"></div>
 
-  <script type="text/babel">
+  <!-- PERHATIKAN: menggunakan data-type="module" agar bisa import Firebase -->
+  <script type="text/babel" data-type="module">
+    import { initializeApp } from "firebase/app";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "firebase/auth";
+    import { getFirestore, collection, onSnapshot, setDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
+
+    // Inisialisasi Firebase Cloud Database
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const dbFirestore = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
     const { useState, useEffect, useRef } = React;
 
     // ==============================================================================
@@ -68,7 +75,7 @@
     };
 
     // ==============================================================================
-    // FUNGSI GLOBAL PEMBUATAN PDF (SUPER ANTI-CROP, ANTI-BLANK & ANTI-SCROLL)
+    // FUNGSI PDF REVOLUSIONER (FIXED PHANTOM - Anti Scroll & Anti Blank)
     // ==============================================================================
     const exportPDFHelper = (elementId, filename, isLandscape = false) => {
         return new Promise((resolve, reject) => {
@@ -83,37 +90,39 @@
                 return;
             }
 
-            // KUNCI KEBERHASILAN: Menggunakan fitur 'onclone' bawaan html2pdf.
-            // Kita membiarkan elemen di layar asli tersembunyi dengan rapi.
-            // Namun di dalam dokumen kloningan yang dipotret mesin, kita paksa buka batasannya.
+            // 1. Kloning Elemen Murni
+            const clone = sourceElement.cloneNode(true);
+            clone.style.display = 'block'; 
+            
+            // 2. Bungkus di container FIXED agar tidak mempengaruhi Scroll halaman sama sekali
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed';
+            wrapper.style.top = '0';
+            wrapper.style.left = '0';
+            wrapper.style.width = isLandscape ? '1120px' : '800px';
+            wrapper.style.zIndex = '-9999'; // Dibelakang semua elemen
+            wrapper.style.opacity = '0.001'; // Hampir tak kasat mata tapi bisa dibaca canvas
+            wrapper.style.pointerEvents = 'none';
+
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+
             const opt = {
               margin:       15,
               filename:     filename,
               image:        { type: 'jpeg', quality: 0.98 },
-              html2canvas:  { 
-                scale: 2, 
-                useCORS: true,
-                onclone: (clonedDoc) => {
-                    const el = clonedDoc.getElementById(elementId);
-                    if (el) {
-                        // Telusuri ke atas dan buka bungkus "overflow: hidden" agar tercetak penuh
-                        let parent = el.parentElement;
-                        while (parent && parent.tagName !== 'BODY') {
-                            parent.style.overflow = 'visible';
-                            parent.style.height = 'auto';
-                            parent.style.width = 'auto';
-                            parent.style.position = 'static';
-                            parent = parent.parentElement;
-                        }
-                    }
-                }
-              },
+              html2canvas:  { scale: 2, useCORS: true },
               jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
             };
 
-            window.html2pdf().set(opt).from(sourceElement).save()
-                .then(resolve)
-                .catch(reject);
+            // 3. Render dan Hapus Wadah
+            window.html2pdf().set(opt).from(wrapper).save().then(() => {
+                document.body.removeChild(wrapper);
+                resolve();
+            }).catch(err => {
+                document.body.removeChild(wrapper);
+                reject(err);
+            });
         });
     };
 
@@ -121,7 +130,11 @@
     function App() {
       const [currentView, setCurrentView] = useState('landing');
       const [isPdfReady, setIsPdfReady] = useState(false);
+      
+      // State Database Cloud (Real-time)
       const [db, setDb] = useState([]);
+      const [userAuth, setUserAuth] = useState(null);
+
       const [currentUser, setCurrentUser] = useState(null); 
       const [loggedInStudent, setLoggedInStudent] = useState(null); 
       const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
@@ -132,30 +145,71 @@
         setTimeout(() => setToast({ visible: false, message: '', type: 'info' }), 3000);
       };
 
-      // Load Database from LocalStorage on mount
+      // INIT FIREBASE AUTH (MANDATORY)
       useEffect(() => {
-        const savedData = localStorage.getItem('pmb_database');
-        if (savedData) {
-          setDb(JSON.parse(savedData));
-        }
+        const initAuth = async () => {
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch(e) {
+            console.error("Auth error:", e);
+          }
+        };
+        initAuth();
+
+        const unsubscribe = onAuthStateChanged(auth, setUserAuth);
         
         if (window.html2pdf) {
             setIsPdfReady(true);
         } else {
             setTimeout(() => setIsPdfReady(true), 1500); 
         }
+
+        return () => unsubscribe();
       }, []);
 
-      const saveToDb = (formData) => {
-        const newUser = { ...formData, id: Date.now(), tanggalDaftar: new Date().toLocaleDateString('id-ID'), statusPembayaran: 'Belum Bayar' };
-        const newDb = [...db, newUser];
-        setDb(newDb);
-        localStorage.setItem('pmb_database', JSON.stringify(newDb));
-        setCurrentUser(newUser);
-        setLoggedInStudent(newUser); 
-        setCurrentView('success');
-        showToast('Data Pendaftaran Berhasil Disimpan!', 'success');
-        window.scrollTo(0, 0);
+      // FETCH DATA FROM FIRESTORE (REAL-TIME CLOUD DB)
+      useEffect(() => {
+        if (!userAuth) return;
+
+        // Path wajib sesuai protokol cloud Firebase kita
+        const usersRef = collection(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users');
+        
+        const unsubscribe = onSnapshot(usersRef, (snapshot) => {
+           const usersData = snapshot.docs.map(doc => doc.data());
+           // Urutkan berdasarkan yang terbaru
+           setDb(usersData.sort((a,b) => b.id - a.id));
+        }, (error) => {
+           console.error("Firestore Listener Error:", error);
+           showToast("Gagal memuat database cloud.", "error");
+        });
+
+        return () => unsubscribe();
+      }, [userAuth]);
+
+      // FUNGSI MENYIMPAN KE CLOUD DB
+      const saveToDb = async (formData) => {
+        if (!userAuth) return;
+
+        const newId = Date.now();
+        const newUser = { ...formData, id: newId, tanggalDaftar: new Date().toLocaleDateString('id-ID'), statusPembayaran: 'Belum Bayar' };
+        
+        try {
+          const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', newId.toString());
+          await setDoc(docRef, newUser);
+
+          setCurrentUser(newUser);
+          setLoggedInStudent(newUser); 
+          setCurrentView('success');
+          showToast('Data Pendaftaran Berhasil Disimpan ke Cloud!', 'success');
+          window.scrollTo(0, 0);
+        } catch(err) {
+          showToast('Gagal menyimpan ke server!', 'error');
+          console.error(err);
+        }
       };
 
       const handleStudentLogin = (user) => {
@@ -165,36 +219,44 @@
         window.scrollTo(0, 0);
       };
 
-      // Fungsi konfirmasi pembayaran oleh Admin
-      const handleConfirmPayment = (userId) => {
+      // FUNGSI KONFIRMASI PEMBAYARAN KE CLOUD
+      const handleConfirmPayment = async (userId) => {
+        if(!userAuth) return;
         if(window.confirm('Anda yakin ingin mengonfirmasi pembayaran untuk pendaftar ini?')) {
-           const updatedDb = db.map(user => 
-             user.id === userId ? { ...user, statusPembayaran: 'Dikonfirmasi', tanggalDikonfirmasi: new Date().toLocaleDateString('id-ID') } : user
-           );
-           setDb(updatedDb);
-           localStorage.setItem('pmb_database', JSON.stringify(updatedDb));
-           showToast('Pembayaran berhasil dikonfirmasi!', 'success');
+           try {
+             const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', userId.toString());
+             await updateDoc(docRef, { statusPembayaran: 'Dikonfirmasi', tanggalDikonfirmasi: new Date().toLocaleDateString('id-ID') });
+             showToast('Pembayaran berhasil dikonfirmasi secara online!', 'success');
+           } catch(err) {
+             showToast('Gagal mengubah data.', 'error');
+           }
         }
       };
 
-      // Fungsi hapus data maba oleh Admin
-      const handleDeleteUser = (userId) => {
+      // FUNGSI HAPUS MABA DI CLOUD
+      const handleDeleteUser = async (userId) => {
+        if(!userAuth) return;
         if(window.confirm('PERINGATAN! Anda yakin ingin menghapus data calon mahasiswa ini secara permanen?')) {
-          const updatedDb = db.filter(user => user.id !== userId);
-          setDb(updatedDb);
-          localStorage.setItem('pmb_database', JSON.stringify(updatedDb));
-          showToast('Data calon mahasiswa berhasil dihapus.', 'success');
+          try {
+            const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', userId.toString());
+            await deleteDoc(docRef);
+            showToast('Data berhasil dihapus dari sistem Cloud.', 'success');
+          } catch(err) {
+            showToast('Gagal menghapus data.', 'error');
+          }
         }
       };
 
-      // Fungsi update data maba oleh Admin (Edit)
-      const handleUpdateUser = (updatedUserData) => {
-        const updatedDb = db.map(user => 
-          user.id === updatedUserData.id ? updatedUserData : user
-        );
-        setDb(updatedDb);
-        localStorage.setItem('pmb_database', JSON.stringify(updatedDb));
-        showToast('Data calon mahasiswa berhasil diperbarui!', 'success');
+      // FUNGSI EDIT/UPDATE DI CLOUD
+      const handleUpdateUser = async (updatedUserData) => {
+        if(!userAuth) return;
+        try {
+           const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', updatedUserData.id.toString());
+           await updateDoc(docRef, updatedUserData);
+           showToast('Data calon mahasiswa berhasil diperbarui di Cloud!', 'success');
+        } catch(err) {
+           showToast('Gagal memperbarui data.', 'error');
+        }
       };
 
       return (
@@ -588,8 +650,8 @@
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
-          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
+          {/* TEMPLATE PDF MURNI: Disembunyikan (Tidak merusak layout) */}
+          <div style={{ display: 'none' }}>
             
             {/* Template Formulir Maba (Lebar Aktual 800px) */}
             <div id="pdf-formulir-template-dashboard" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
@@ -1089,8 +1151,8 @@
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
-          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
+          {/* TEMPLATE PDF MURNI: Disembunyikan (Tidak merusak layout) */}
+          <div style={{ display: 'none' }}>
             <div id="pdf-formulir-template" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
@@ -1216,7 +1278,7 @@
             <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <i className="fa-solid fa-users text-blue-600 text-xl"></i> Database Pendaftar
+                  <i className="fa-solid fa-users text-blue-600 text-xl"></i> Database Pendaftar (Cloud)
                 </h2>
                 <p className="text-slate-500 text-sm mt-1">Total Pendaftar: {db.length} Mahasiswa</p>
               </div>
@@ -1275,15 +1337,15 @@
                       );
                     })
                   ) : (
-                    <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-500">Belum ada data pendaftar.</td></tr>
+                    <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-500">Belum ada data pendaftar di server.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* TEMPLATE PDF MURNI: Dibungkus container 0x0 agar browser merender dimensi asli tanpa terlihat di layar */}
-          <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', zIndex: -100 }}>
+          {/* TEMPLATE PDF MURNI: Disembunyikan (Tidak merusak layout) */}
+          <div style={{ display: 'none' }}>
             
             {/* Laporan Admin Lanskap (Lebar A4 Lanskap 1120px) */}
             <div id="pdf-database-template" style={{ width: '1120px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
@@ -1367,4 +1429,4 @@
     root.render(<App />);
   </script>
 </body>
-</html>  
+</html>
