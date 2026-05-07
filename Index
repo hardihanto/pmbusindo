@@ -1,0 +1,885 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  GraduationCap, 
+  FileText, 
+  Download, 
+  Database, 
+  UserPlus, 
+  Home, 
+  CheckCircle,
+  Users,
+  Briefcase,
+  Building,
+  CreditCard,
+  Globe,
+  MapPin,
+  Phone,
+  Instagram,
+  Facebook,
+  Award,
+  BookOpen,
+  Scale,
+  Monitor,
+  HeartPulse,
+  Bell,
+  Info,
+  X,
+  Lock,
+  LogOut
+} from 'lucide-react';
+
+// Main Application Component
+export default function App() {
+  const [currentView, setCurrentView] = useState('landing');
+  const [isPdfReady, setIsPdfReady] = useState(false);
+  const [db, setDb] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  const showToast = (message, type = 'info') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'info' }), 3000);
+  };
+
+  // Load Database from LocalStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem('pmb_database');
+    if (savedData) {
+      setDb(JSON.parse(savedData));
+    }
+
+    // Dynamically load html2pdf.js for PDF generation
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.async = true;
+    script.onload = () => setIsPdfReady(true);
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const saveToDb = (formData) => {
+    const newUser = { ...formData, id: Date.now(), tanggalDaftar: new Date().toLocaleDateString('id-ID') };
+    const newDb = [...db, newUser];
+    setDb(newDb);
+    localStorage.setItem('pmb_database', JSON.stringify(newDb));
+    setCurrentUser(newUser);
+    setCurrentView('success');
+    showToast('Data Pendaftaran Berhasil Disimpan!', 'success');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 relative overflow-hidden">
+      {/* Toast Notification */}
+      <div className={`fixed top-20 right-4 z-50 transition-all duration-300 transform ${toast.visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl text-white border ${toast.type === 'success' ? 'bg-green-600 border-green-700' : toast.type === 'error' ? 'bg-red-600 border-red-700' : 'bg-blue-600 border-blue-700'}`}>
+          {toast.type === 'success' ? <CheckCircle size={20} /> : <Info size={20} />}
+          <span className="font-medium text-sm md:text-base">{toast.message}</span>
+          <button onClick={() => setToast({ ...toast, visible: false })} className="ml-2 text-white/80 hover:text-white transition">
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* FOMO Notification (Now receives DB to show real registrants) */}
+      <FomoNotification db={db} />
+
+      {/* Navigation Bar */}
+      <nav className="bg-red-700 text-white shadow-md sticky top-0 z-10 border-b-4 border-yellow-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div 
+              className="flex items-center gap-2 cursor-pointer" 
+              onClick={() => setCurrentView('landing')}
+            >
+              <GraduationCap size={32} className="text-yellow-400" />
+              <span className="font-bold text-xl tracking-tight">PMB USINDO</span>
+            </div>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setCurrentView('landing')}
+                className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'landing' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+              >
+                <Home size={18} /> <span className="hidden sm:inline">Beranda</span>
+              </button>
+              <button 
+                onClick={() => setCurrentView('form')}
+                className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'form' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+              >
+                <UserPlus size={18} /> <span className="hidden sm:inline">Daftar</span>
+              </button>
+              <button 
+                onClick={() => setCurrentView('admin')}
+                className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${currentView === 'admin' ? 'bg-red-900' : 'hover:bg-red-800'}`}
+              >
+                <Database size={18} /> <span className="hidden sm:inline">Admin</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="flex-grow flex flex-col">
+        {currentView === 'landing' && <LandingPage setView={setCurrentView} />}
+        {currentView === 'form' && <RegistrationForm submitForm={saveToDb} />}
+        {currentView === 'success' && <SuccessPage user={currentUser} isPdfReady={isPdfReady} showToast={showToast} />}
+        {currentView === 'admin' && (
+          !isAdminLoggedIn ? (
+             <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} showToast={showToast} />
+          ) : (
+             <AdminDashboard db={db} isPdfReady={isPdfReady} showToast={showToast} onLogout={() => setIsAdminLoggedIn(false)} />
+          )
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 text-slate-300 py-10 border-t-4 border-yellow-400">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+          <div>
+            <h3 className="text-yellow-400 font-bold text-lg mb-4">Informasi & Pendaftaran</h3>
+            <p className="flex items-center gap-2 mb-2"><Phone size={16} className="text-red-400"/> Hubungi WhatsApp: <span className="font-bold text-white text-base">081929009212</span></p>
+            <p className="flex items-center gap-2 mb-2"><Globe size={16} className="text-red-400"/> www.usindo.ac.id</p>
+            <p className="flex items-center gap-2 mb-2"><Instagram size={16} className="text-red-400"/> @usindo.id</p>
+            <p className="flex items-center gap-2"><Facebook size={16} className="text-red-400"/> Universitas Sehati Indonesia</p>
+          </div>
+          <div>
+            <h3 className="text-yellow-400 font-bold text-lg mb-4">Lokasi Kampus</h3>
+            <div className="mb-4">
+              <p className="font-bold text-white flex items-center gap-1"><MapPin size={16} className="text-red-400"/> Kampus 1 USINDO</p>
+              <p className="text-slate-400 pl-5 leading-tight">Jl. Raya Kosambi - Telagasari Dusun Kawali,<br/>Pancawati, Kec. Klari, Karawang</p>
+            </div>
+            <div>
+              <p className="font-bold text-white flex items-center gap-1"><MapPin size={16} className="text-red-400"/> Kampus 2 USINDO</p>
+              <p className="text-slate-400 pl-5 leading-tight">Jl Raya Pangkal Perjuangan By Pass Karawang<br/>(200 Meter Dari SMKN 1 Karawang)</p>
+            </div>
+          </div>
+          <div className="text-center md:text-right flex flex-col justify-center items-center md:items-end">
+            <p className="mb-2">© 2026 Universitas Sehati Indonesia.</p>
+            <div className="inline-block mt-2 p-4 border border-slate-700 rounded-lg bg-slate-800 text-center">
+              <p className="text-sm text-slate-400">Mengetahui,</p>
+              <p className="font-bold text-white text-lg mt-1">Hardi Hanto</p>
+              <p className="text-sm text-yellow-400">Panitia PMB</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// 0. Admin Login Component
+function AdminLogin({ onLogin, showToast }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (username === 'Admin!' && password === '@PMB#Usindo#1!') {
+      onLogin();
+      showToast('Login berhasil. Selamat datang Admin!', 'success');
+    } else {
+      showToast('Username atau password salah!', 'error');
+    }
+  };
+
+  return (
+    <div className="flex-grow flex items-center justify-center p-6 bg-slate-100">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-red-700">
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-red-100 p-4 rounded-full mb-4">
+            <Lock size={40} className="text-red-700" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800">Login Administrator</h2>
+          <p className="text-slate-500 text-sm mt-1">Akses khusus panitia PMB USINDO</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
+            <input 
+              required 
+              type="text" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" 
+              placeholder="Masukkan username" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+            <input 
+              required 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" 
+              placeholder="Masukkan password" 
+            />
+          </div>
+          <button 
+            type="submit" 
+            className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200"
+          >
+            Masuk ke Dashboard
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// 1. Landing Page Component
+function LandingPage({ setView }) {
+  return (
+    <div className="flex-grow flex flex-col items-center p-6 bg-slate-50 w-full">
+      {/* Hero Section */}
+      <div className="w-full max-w-5xl text-center space-y-6 py-12">
+        <div className="inline-block mb-2">
+          <span className="bg-yellow-400 text-red-900 font-bold px-5 py-2 rounded-full text-sm md:text-base tracking-wide uppercase shadow-sm">
+            "Lulusan USINDO Siap Kerja"
+          </span>
+        </div>
+        <h1 className="text-5xl md:text-6xl font-extrabold text-red-700 tracking-tight leading-tight uppercase drop-shadow-sm">
+          Universitas Sehati <br className="hidden md:block"/> Indonesia
+        </h1>
+        <h2 className="text-2xl md:text-3xl font-bold text-slate-800 italic">
+          "Kuliah ? Usindo Aja !"
+        </h2>
+        
+        {/* USINDO mukhya chithra serisuvudu */}
+        <div className="w-full max-w-4xl mx-auto my-8 overflow-hidden rounded-2xl shadow-lg border-4 border-yellow-400">
+          <img 
+            src="https://assyifateknologinusantara.com/wp-content/uploads/2026/05/usindo.jpeg" 
+            alt="Kampus USINDO" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 max-w-3xl mx-auto my-6">
+          <p className="font-bold text-slate-800 text-sm md:text-base flex items-center justify-center gap-2 uppercase">
+            <Award className="text-yellow-500" /> SK KEMENDIKBUDRISTEK NO 600/E/O/2023
+          </p>
+          <p className="text-slate-600 text-sm mt-2">
+            Terakreditasi No. SK : 1403/SK/BAN-PT/AK.P/PT/VII/2024
+          </p>
+          <div className="mt-2 inline-block bg-green-100 text-green-800 px-3 py-1 rounded font-bold text-sm border border-green-200">
+            Terakreditasi BAIK
+          </div>
+        </div>
+
+        <div className="pt-4">
+          <button 
+            onClick={() => setView('form')}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transform transition hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-3 mx-auto text-xl border-b-4 border-red-800"
+          >
+            <FileText size={24} />
+            Daftar Sekarang
+          </button>
+        </div>
+      </div>
+
+      {/* PL-Usindo mahiti chithra serisuvudu dengan OVERLAY koreksi nomor */}
+      <div className="w-full max-w-5xl py-8 px-4 mx-auto">
+        <div className="overflow-hidden rounded-2xl shadow-lg border-2 border-slate-200 relative">
+          <img 
+            src="https://assyifateknologinusantara.com/wp-content/uploads/2026/05/PL-Usindo.jpeg" 
+            alt="Brosur Pendaftaran USINDO" 
+            className="w-full h-auto object-cover block"
+          />
+          {/* Overlay Peringatan Perubahan Nomor (Workaround untuk edit gambar eksternal) */}
+          <div className="absolute bottom-0 left-0 right-0 bg-red-900/90 text-white p-4 md:p-6 text-center border-t-4 border-yellow-400 backdrop-blur-sm">
+            <p className="font-bold text-lg md:text-2xl uppercase flex items-center justify-center gap-2 drop-shadow-md">
+              <Phone className="text-yellow-400" size={28} />
+              Info Pembaruan Kontak PMB
+            </p>
+            <p className="text-sm md:text-lg mt-2 font-medium">
+              Mohon abaikan nomor yang tertera pada brosur di atas. <br className="hidden md:block"/>
+              Nomor WhatsApp resmi pendaftaran PMB USINDO adalah: 
+              <span className="block mt-1 font-extrabold text-yellow-400 text-2xl md:text-3xl tracking-widest drop-shadow-md">
+                081929009212
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Faculties Section */}
+      <div className="w-full max-w-6xl py-12">
+        <h3 className="text-3xl font-bold text-center text-red-800 mb-10 uppercase tracking-wider drop-shadow-sm">Fakultas Yang Tersedia</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Fakultas Ilmu Kesehatan */}
+          <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-2xl shadow-md border border-yellow-200 overflow-hidden transform transition hover:-translate-y-1">
+            <div className="bg-yellow-400 p-6 text-center flex flex-col items-center justify-center">
+              <HeartPulse size={48} className="text-red-800 mb-2" />
+              <h4 className="font-bold text-xl text-red-900">Fakultas Ilmu Kesehatan</h4>
+            </div>
+            <ul className="p-6 space-y-4 font-semibold text-slate-800">
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Ilmu Kesehatan Masyarakat</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> D3 Kebidanan</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> D3 Keperawatan</li>
+            </ul>
+          </div>
+
+          {/* Fakultas Hukum & Ilmu Sosial */}
+          <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-2xl shadow-md border border-yellow-200 overflow-hidden transform transition hover:-translate-y-1">
+            <div className="bg-yellow-400 p-6 text-center flex flex-col items-center justify-center">
+              <Scale size={48} className="text-red-800 mb-2" />
+              <h4 className="font-bold text-xl text-red-900">Fakultas Hukum & Ilmu Sosial</h4>
+            </div>
+            <ul className="p-6 space-y-4 font-semibold text-slate-800">
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Ilmu Hukum</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Manajemen</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Psikologi</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 PGSD</li>
+            </ul>
+          </div>
+
+          {/* Fakultas Teknik */}
+          <div className="bg-gradient-to-b from-yellow-50 to-yellow-100 rounded-2xl shadow-md border border-yellow-200 overflow-hidden transform transition hover:-translate-y-1">
+            <div className="bg-yellow-400 p-6 text-center flex flex-col items-center justify-center">
+              <Monitor size={48} className="text-red-800 mb-2" />
+              <h4 className="font-bold text-xl text-red-900">Fakultas Teknik</h4>
+            </div>
+            <ul className="p-6 space-y-4 font-semibold text-slate-800">
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Rekayasa Industri</li>
+              <li className="flex items-center gap-3"><CheckCircle size={20} className="text-yellow-600" /> S1 Teknik Informatika</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Benefits Section */}
+      <div className="w-full max-w-6xl py-12 border-t border-slate-200">
+         <div className="flex flex-wrap justify-center gap-4 text-center">
+            <div className="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 w-full md:w-auto hover:bg-red-50 transition">
+              <Briefcase className="text-red-600" size={32}/>
+              <span className="font-bold text-slate-800 text-sm md:text-base text-left">Bekerjasama Dengan<br/>Perusahaan Dalam & Luar Negeri</span>
+            </div>
+            <div className="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 w-full md:w-auto hover:bg-red-50 transition">
+              <BookOpen className="text-red-600" size={32}/>
+              <span className="font-bold text-slate-800 text-sm md:text-base text-left">Tersedia Banyak<br/>Pilihan Beasiswa</span>
+            </div>
+            <div className="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 w-full md:w-auto hover:bg-red-50 transition">
+              <Building className="text-red-600" size={32}/>
+              <span className="font-bold text-slate-800 text-sm md:text-base text-left">GRATIS<br/>Biaya Bangunan</span>
+            </div>
+            <div className="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 w-full md:w-auto hover:bg-red-50 transition">
+              <CreditCard className="text-red-600" size={32}/>
+              <span className="font-bold text-slate-800 text-sm md:text-base text-left">UANG KULIAH BISA<br/>Di Cicil Perbulan</span>
+            </div>
+            <div className="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 w-full md:w-auto hover:bg-red-50 transition">
+              <Home className="text-red-600" size={32}/>
+              <span className="font-bold text-slate-800 text-sm md:text-base text-left">TERSEDIA<br/>Asrama Mahasiswa</span>
+            </div>
+         </div>
+      </div>
+    </div>
+  );
+}
+
+// 2. Registration Form Component
+function RegistrationForm({ submitForm }) {
+  const [formData, setFormData] = useState({
+    nama: '',
+    nisn: '',
+    nik: '',
+    tempatLahir: '',
+    tanggalLahir: '',
+    jenisKelamin: 'Laki-laki',
+    agama: 'Islam',
+    alamat: '',
+    asalSekolah: '',
+    jurusanSekolah: '',
+    programStudi: 'S1 Teknik Informatika',
+    noHp: '',
+    email: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitForm(formData);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto w-full p-4 sm:p-6 lg:p-8 my-8">
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-t-8 border-yellow-400">
+        <div className="bg-red-700 p-6 text-white text-center">
+          <h2 className="text-2xl font-bold">Formulir Pendaftaran Mahasiswa Baru</h2>
+          <p className="text-red-100 mt-2">Lengkapi data diri Anda di bawah ini dengan benar.</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 sm:p-10 space-y-8">
+          {/* Bagian Data Pribadi */}
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Data Pribadi</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Sesuai Ijazah)</label>
+                <input required type="text" name="nama" value={formData.nama} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition" placeholder="Contoh: Budi Santoso" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">NIK (Nomor Induk Kependudukan)</label>
+                <input required type="number" name="nik" value={formData.nik} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="16 digit NIK" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">NISN</label>
+                <input required type="number" name="nisn" value={formData.nisn} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="Nomor Induk Siswa Nasional" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tempat Lahir</label>
+                <input required type="text" name="tempatLahir" value={formData.tempatLahir} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="Kota Kelahiran" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Lahir</label>
+                <input required type="date" name="tanggalLahir" value={formData.tanggalLahir} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jenis Kelamin</label>
+                <select name="jenisKelamin" value={formData.jenisKelamin} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white">
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Agama</label>
+                <select name="agama" value={formData.agama} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white">
+                  <option value="Islam">Islam</option>
+                  <option value="Kristen">Kristen</option>
+                  <option value="Katolik">Katolik</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Buddha">Buddha</option>
+                  <option value="Konghucu">Konghucu</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Alamat Lengkap</label>
+                <textarea required name="alamat" value={formData.alamat} onChange={handleChange} rows="3" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="Nama Jalan, RT/RW, Kelurahan, Kecamatan, Kota, Kode Pos"></textarea>
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian Sekolah Asal */}
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Pendidikan Asal & Pilihan Program Studi</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah (SMA/SMK/MA)</label>
+                <input required type="text" name="asalSekolah" value={formData.asalSekolah} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="Contoh: SMAN 1 Jakarta" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jurusan di Sekolah</label>
+                <input required type="text" name="jurusanSekolah" value={formData.jurusanSekolah} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="Contoh: IPA / TKJ" />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Pilihan Program Studi</label>
+                <select name="programStudi" value={formData.programStudi} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white">
+                  <optgroup label="Fakultas Ilmu Kesehatan">
+                    <option value="S1 Ilmu Kesehatan Masyarakat">S1 Ilmu Kesehatan Masyarakat</option>
+                    <option value="D3 Kebidanan">D3 Kebidanan</option>
+                    <option value="D3 Keperawatan">D3 Keperawatan</option>
+                  </optgroup>
+                  <optgroup label="Fakultas Hukum & Ilmu Sosial">
+                    <option value="S1 Ilmu Hukum">S1 Ilmu Hukum</option>
+                    <option value="S1 Manajemen">S1 Manajemen</option>
+                    <option value="S1 Psikologi">S1 Psikologi</option>
+                    <option value="S1 PGSD">S1 PGSD</option>
+                  </optgroup>
+                  <optgroup label="Fakultas Teknik">
+                    <option value="S1 Rekayasa Industri">S1 Rekayasa Industri</option>
+                    <option value="S1 Teknik Informatika">S1 Teknik Informatika</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian Kontak */}
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Kontak</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nomor WhatsApp / HP</label>
+                <input required type="tel" name="noHp" value={formData.noHp} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="081234567890" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email Aktif</label>
+                <input required type="email" name="email" value={formData.email} onChange={handleChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="email@contoh.com" />
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4">
+            <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-lg shadow transition duration-200 border-b-4 border-red-800">
+              Kirim Formulir Pendaftaran
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// 3. Success Page & PDF Generator for Single User
+function SuccessPage({ user, isPdfReady, showToast }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const downloadPDF = () => {
+    if (!isPdfReady || !window.html2pdf) {
+      alert("Sistem PDF masih memuat, silakan coba beberapa saat lagi.");
+      return;
+    }
+    
+    setIsGenerating(true);
+    showToast('Sedang memproses unduhan PDF...', 'info');
+    const element = document.getElementById('pdf-formulir-template');
+    
+    // Temporarily make it visible for html2pdf rendering (if hidden)
+    element.style.display = 'block';
+
+    const opt = {
+      margin:       [2, 2, 2, 2], // Margin 2 cm di semua sisi (atas, kiri, bawah, kanan)
+      filename:     `Formulir_PMB_${user.nama.replace(/\s+/g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'cm', format: 'a4', orientation: 'portrait' }
+    };
+
+    window.html2pdf().set(opt).from(element).save().then(() => {
+      setIsGenerating(false);
+      element.style.display = 'none'; // Hide again
+      showToast('Formulir PDF berhasil diunduh!', 'success');
+    });
+  };
+
+  if (!user) return <div className="p-10 text-center">Data tidak ditemukan.</div>;
+
+  return (
+    <div className="flex-grow flex flex-col items-center justify-center p-6 my-8">
+      <div className="max-w-xl w-full bg-white p-8 rounded-2xl shadow-xl text-center">
+        <CheckCircle size={80} className="text-green-500 mx-auto mb-6" />
+        <h2 className="text-3xl font-bold text-slate-800 mb-2">Pendaftaran Berhasil!</h2>
+        <p className="text-slate-600 mb-8">
+          Terima kasih, <strong>{user.nama}</strong>. Data pendaftaran Anda untuk program studi <strong>{user.programStudi}</strong> telah berhasil disimpan di sistem kami.
+        </p>
+
+        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-8 text-left">
+          <p className="text-sm text-slate-500 mb-1">Nomor Registrasi:</p>
+          <p className="font-mono font-bold text-lg text-blue-900 mb-3">PMB-{user.id}</p>
+          <p className="text-sm text-slate-500 mb-1">Langkah Selanjutnya:</p>
+          <p className="text-sm text-slate-700">Silakan unduh bukti pendaftaran di bawah ini. Formulir ini wajib dibawa pada saat proses validasi dan daftar ulang di kampus.</p>
+        </div>
+
+        <button 
+          onClick={downloadPDF}
+          disabled={!isPdfReady || isGenerating}
+          className={`w-full flex items-center justify-center gap-2 py-4 px-6 rounded-lg font-bold text-white transition shadow-lg ${!isPdfReady || isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+        >
+          {isGenerating ? (
+             <span className="animate-pulse">Sedang Membuat PDF...</span>
+          ) : (
+            <>
+              <Download size={24} /> Download Formulir (PDF)
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Hidden Template for PDF Rendering */}
+      <div style={{ display: 'none' }}>
+        <div id="pdf-formulir-template" className="bg-white font-sans text-slate-900" style={{ width: '100%', color: 'black' }}>
+          {/* KOP SURAT */}
+          <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
+            <div className="flex-grow text-center">
+              <h1 className="text-xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
+              <p className="text-sm mt-1">Jl. Raya Kosambi - Telagasari Dusun Kawali, Pancawati, Kec. Klari, Karawang</p>
+              <p className="text-sm">Telp/WA: 081929009212 | IG: @usindo.id | Web: www.usindo.ac.id</p>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-bold text-center uppercase mb-8 decoration-solid underline">Bukti Pendaftaran Mahasiswa Baru 2026/2027</h2>
+
+          {/* DETAIL DATA */}
+          <table className="w-full mb-8 text-left border-collapse text-sm">
+            <tbody>
+              <tr><td className="w-1/3 py-2 font-semibold">Nomor Registrasi</td><td className="w-4">:</td><td className="font-mono font-bold">PMB-{user.id}</td></tr>
+              <tr><td className="py-2 font-semibold">Tanggal Daftar</td><td>:</td><td>{user.tanggalDaftar}</td></tr>
+              <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
+              <tr><td className="py-2 font-semibold">Nama Lengkap</td><td>:</td><td className="font-bold uppercase">{user.nama}</td></tr>
+              <tr><td className="py-2 font-semibold">NIK / NISN</td><td>:</td><td>{user.nik} / {user.nisn}</td></tr>
+              <tr><td className="py-2 font-semibold">Tempat, Tanggal Lahir</td><td>:</td><td>{user.tempatLahir}, {user.tanggalLahir}</td></tr>
+              <tr><td className="py-2 font-semibold">Jenis Kelamin / Agama</td><td>:</td><td>{user.jenisKelamin} / {user.agama}</td></tr>
+              <tr><td className="py-2 font-semibold align-top">Alamat Lengkap</td><td className="align-top">:</td><td>{user.alamat}</td></tr>
+              <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
+              <tr><td className="py-2 font-semibold">Asal Sekolah</td><td>:</td><td>{user.asalSekolah} (Jurusan: {user.jurusanSekolah})</td></tr>
+              <tr><td className="py-2 font-semibold">Pilihan Program Studi</td><td>:</td><td className="font-bold text-red-700">{user.programStudi}</td></tr>
+              <tr><td className="py-2 font-semibold">Email / No. HP</td><td>:</td><td>{user.email} / {user.noHp}</td></tr>
+            </tbody>
+          </table>
+
+          <div className="mt-6 text-justify text-sm mb-12 leading-relaxed text-slate-700">
+            <p>Menyatakan bahwa data yang diisikan adalah benar dan dapat dipertanggungjawabkan. Formulir ini merupakan bukti sah pendaftaran online calon mahasiswa baru Universitas Sehati Indonesia (USINDO).</p>
+          </div>
+
+          {/* TTD PENGESAHAN */}
+          <div className="flex justify-between mt-8 text-sm">
+             <div className="text-center w-1/3 flex flex-col justify-end">
+              <p className="mb-20">Calon Mahasiswa,</p>
+              <p className="font-bold underline uppercase">{user.nama}</p>
+            </div>
+            <div className="text-center w-1/3">
+              <p>Karawang, {user.tanggalDaftar}</p>
+              <p className="mb-20">Mengetahui, <br/>Panitia PMB</p>
+              <p className="font-bold underline">Hardi Hanto</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 4. Admin Dashboard Component
+function AdminDashboard({ db, isPdfReady, showToast, onLogout }) {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportDatabasePDF = () => {
+    if (!isPdfReady || !window.html2pdf) {
+      alert("Sistem PDF masih memuat, silakan coba beberapa saat lagi.");
+      return;
+    }
+    
+    setIsExporting(true);
+    showToast('Sedang mengekspor database ke PDF...', 'info');
+    const element = document.getElementById('pdf-database-template');
+    element.style.display = 'block';
+
+    const opt = {
+      margin:       0.4,
+      filename:     `Database_PMB_Export_${new Date().getTime()}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'landscape', orientation: 'landscape' } // Landscape for tables
+    };
+
+    window.html2pdf().set(opt).from(element).save().then(() => {
+      setIsExporting(false);
+      element.style.display = 'none';
+      showToast('Database berhasil diekspor!', 'success');
+    });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 my-8">
+      <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+        <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <Users className="text-blue-600" /> Database Pendaftar
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">Total Pendaftar: {db.length} Mahasiswa</p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button 
+              onClick={exportDatabasePDF}
+              disabled={!isPdfReady || db.length === 0 || isExporting}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold transition ${db.length === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow'}`}
+            >
+              {isExporting ? 'Mengekspor...' : <><Download size={18} /> Export PDF</>}
+            </button>
+            <button 
+              onClick={() => {
+                onLogout();
+                showToast('Berhasil logout dari Admin.', 'info');
+              }}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 transition"
+            >
+              <LogOut size={18} /> Keluar
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto p-4">
+          <table className="w-full text-sm text-left text-slate-600">
+            <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+              <tr>
+                <th className="px-4 py-3 rounded-tl-lg">No. Reg</th>
+                <th className="px-4 py-3">Nama</th>
+                <th className="px-4 py-3">Program Studi</th>
+                <th className="px-4 py-3">Asal Sekolah</th>
+                <th className="px-4 py-3">No. HP</th>
+                <th className="px-4 py-3 rounded-tr-lg">Tgl Daftar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {db.length > 0 ? (
+                db.map((user, index) => (
+                  <tr key={user.id} className="border-b last:border-0 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">PMB-{user.id.toString().slice(-6)}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{user.nama}</td>
+                    <td className="px-4 py-3">{user.programStudi}</td>
+                    <td className="px-4 py-3">{user.asalSekolah}</td>
+                    <td className="px-4 py-3">{user.noHp}</td>
+                    <td className="px-4 py-3">{user.tanggalDaftar}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-4 py-8 text-center text-slate-500 italic">
+                    Belum ada data pendaftar.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Hidden Template for Database Export */}
+      <div style={{ display: 'none' }}>
+        <div id="pdf-database-template" className="bg-white p-8 font-sans" style={{ width: '1100px', color: 'black' }}>
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold uppercase text-red-800">Laporan Database Pendaftaran Mahasiswa Baru</h1>
+            <p className="text-lg font-bold">UNIVERSITAS SEHATI INDONESIA (USINDO)</p>
+            <p className="text-md">Tahun Akademik 2026/2027</p>
+            <p className="text-sm mt-2">Diekspor pada: {new Date().toLocaleString('id-ID')}</p>
+          </div>
+
+          <table className="w-full text-xs text-left border-collapse border border-slate-300">
+            <thead>
+              <tr className="bg-slate-200">
+                <th className="border border-slate-300 p-2 text-center w-8">No</th>
+                <th className="border border-slate-300 p-2">No. Registrasi</th>
+                <th className="border border-slate-300 p-2">Nama Lengkap</th>
+                <th className="border border-slate-300 p-2">NISN / NIK</th>
+                <th className="border border-slate-300 p-2">Program Studi</th>
+                <th className="border border-slate-300 p-2">Asal Sekolah</th>
+                <th className="border border-slate-300 p-2">No. HP</th>
+                <th className="border border-slate-300 p-2">Tgl Daftar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {db.map((user, index) => (
+                <tr key={user.id}>
+                  <td className="border border-slate-300 p-2 text-center">{index + 1}</td>
+                  <td className="border border-slate-300 p-2 font-mono">PMB-{user.id}</td>
+                  <td className="border border-slate-300 p-2 uppercase">{user.nama}</td>
+                  <td className="border border-slate-300 p-2">{user.nisn} / {user.nik}</td>
+                  <td className="border border-slate-300 p-2">{user.programStudi}</td>
+                  <td className="border border-slate-300 p-2">{user.asalSekolah}</td>
+                  <td className="border border-slate-300 p-2">{user.noHp}</td>
+                  <td className="border border-slate-300 p-2">{user.tanggalDaftar}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="flex justify-end mt-12 pr-10">
+            <div className="text-center">
+              <p>Mengetahui,</p>
+              <p className="mb-20">Panitia PMB</p>
+              <p className="font-bold underline">Hardi Hanto</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 5. FOMO Notification Component (Dynamically integrates Local Database)
+function FomoNotification({ db }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [fomoData, setFomoData] = useState({ name: '', prodi: '', time: '' });
+
+  useEffect(() => {
+    // Gabungan data tiruan dengan data REAL dari pendaftar yang tersimpan di sistem
+    const baseNames = ["Andi dari Jakarta", "Siti dari Karawang", "Budi dari Bekasi", "Ayu dari Purwakarta", "Dimas dari Subang", "Rina dari Bandung"];
+    const baseProdis = ["S1 Teknik Informatika", "S1 Ilmu Hukum", "S1 Manajemen", "D3 Keperawatan", "S1 Ilmu Kesehatan Masyarakat"];
+    
+    const dbNames = db.map(user => user.nama + " (Pendaftar Baru)");
+    const dbProdis = db.map(user => user.programStudi);
+
+    const allNames = dbNames.length > 0 ? [...dbNames, ...baseNames] : baseNames;
+    const allProdis = dbProdis.length > 0 ? [...dbProdis, ...baseProdis] : baseProdis;
+    const times = ["Baru saja", "1 menit yang lalu", "2 menit yang lalu", "Beberapa detik yang lalu"];
+
+    const intervalId = setInterval(() => {
+      // Jika ada data riil di DB, beri probabilitas tinggi agar data riil sering muncul di Fomo
+      const useRealData = db.length > 0 && Math.random() > 0.4;
+      
+      let selectedName, selectedProdi;
+      if (useRealData) {
+         const randomDbIndex = Math.floor(Math.random() * db.length);
+         selectedName = db[randomDbIndex].nama;
+         selectedProdi = db[randomDbIndex].programStudi;
+      } else {
+         selectedName = allNames[Math.floor(Math.random() * allNames.length)];
+         selectedProdi = allProdis[Math.floor(Math.random() * allProdis.length)];
+      }
+
+      setFomoData({
+        name: selectedName,
+        prodi: selectedProdi,
+        time: times[Math.floor(Math.random() * times.length)]
+      });
+      setIsVisible(true);
+      
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 5000); // Tampil selama 5 detik
+    }, 15000); // Muncul setiap 15 detik
+
+    // Initial trigger after 3 seconds of loading the app
+    const initialTimeout = setTimeout(() => {
+      const initialName = db.length > 0 ? db[db.length - 1].nama : baseNames[0];
+      const initialProdi = db.length > 0 ? db[db.length - 1].programStudi : baseProdis[0];
+      setFomoData({
+        name: initialName,
+        prodi: initialProdi,
+        time: "Baru saja"
+      });
+      setIsVisible(true);
+      setTimeout(() => setIsVisible(false), 5000);
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(initialTimeout);
+    };
+  }, [db]); // Re-run effect whenever `db` is updated (new user registered)
+
+  return (
+    <div className={`fixed bottom-6 left-6 z-40 bg-white border-l-4 border-yellow-400 p-4 rounded-xl shadow-2xl flex items-center gap-4 max-w-sm transition-all duration-700 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+      <div className="bg-red-100 p-2.5 rounded-full text-red-700">
+        <Bell size={24} className="animate-pulse" />
+      </div>
+      <div>
+        <p className="text-xs text-slate-500 mb-0.5 font-medium">{fomoData.time}</p>
+        <p className="text-sm text-slate-800 leading-tight">
+          <span className="font-bold">{fomoData.name}</span> telah mendaftar di prodi <br/>
+          <span className="text-red-700 font-semibold">{fomoData.prodi}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
