@@ -226,32 +226,36 @@
 
       // 2. FETCH DATA DARI CLOUD (REAL-TIME)
       useEffect(() => {
-        if (!isFirebaseActive || !userAuth) return;
+        if (!isFirebaseActive) return;
 
-        const usersRef = collection(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users');
+        // PERBAIKAN: Path disederhanakan agar lebih rapi untuk Database Pribadi
+        const usersRef = collection(dbFirestore, 'pmb_users');
         const unsubscribe = onSnapshot(usersRef, (snapshot) => {
            const usersData = snapshot.docs.map(doc => doc.data());
            setDb(usersData.sort((a,b) => b.id - a.id));
         }, (error) => {
            console.error("Firestore Error:", error);
+           alert("GAGAL TERHUBUNG KE DATABASE!\n\nPesan Error: " + error.message + "\n\nSolusi Wajib:\n1. Pastikan Anda membuat 'Firestore Database' (bukan Realtime Database).\n2. Pastikan tab Rules sudah diubah menjadi 'allow read, write: if true;' lalu klik Publish.");
         });
 
         return () => unsubscribe();
-      }, [userAuth]);
+      }, []); // Dijalankan tanpa perlu menunggu Auth agar lebih instan
 
       // 3. FUNGSI MENYIMPAN DATA (HYBRID MODE)
       const saveToDb = async (formData) => {
         const newId = Date.now();
         const newUser = { ...formData, id: newId, tanggalDaftar: new Date().toLocaleDateString('id-ID'), statusPembayaran: 'Belum Bayar' };
         
-        if (isFirebaseActive && userAuth) {
+        if (isFirebaseActive) {
             try {
-              const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', newId.toString());
+              // PERBAIKAN: Path disederhanakan
+              const docRef = doc(dbFirestore, 'pmb_users', newId.toString());
               await setDoc(docRef, newUser);
               showToast('Data Berhasil Disimpan ke Cloud Realtime!', 'success');
             } catch(err) {
-              showToast('Gagal menyimpan ke Cloud Server!', 'error');
-              return;
+              console.error("Error Simpan Firebase:", err);
+              alert("GAGAL MENYIMPAN DATA!\n\nPesan Error: " + err.message + "\n\nSolusi Wajib:\n1. Pastikan Anda membuat 'Firestore Database' (bukan Realtime Database).\n2. Pastikan tab Rules sudah diubah menjadi 'allow read, write: if true;' lalu klik Publish.");
+              return; // Mencegah masuk ke halaman Sukses jika data gagal terkirim ke server
             }
         } else {
             // Fallback: Simpan ke Local Storage Browser
@@ -277,9 +281,9 @@
       const handleConfirmPayment = async (userId) => {
         if(window.confirm('Anda yakin ingin mengonfirmasi pembayaran pendaftar ini?')) {
            const updatedInfo = { statusPembayaran: 'Dikonfirmasi', tanggalDikonfirmasi: new Date().toLocaleDateString('id-ID') };
-           if (isFirebaseActive && userAuth) {
+           if (isFirebaseActive) {
                try {
-                 const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', userId.toString());
+                 const docRef = doc(dbFirestore, 'pmb_users', userId.toString());
                  await updateDoc(docRef, updatedInfo);
                  showToast('Pembayaran berhasil dikonfirmasi!', 'success');
                } catch(err) { showToast('Gagal mengubah data cloud.', 'error'); }
@@ -294,9 +298,9 @@
 
       const handleDeleteUser = async (userId) => {
         if(window.confirm('PERINGATAN! Anda yakin ingin menghapus data calon mahasiswa ini secara permanen?')) {
-          if (isFirebaseActive && userAuth) {
+          if (isFirebaseActive) {
               try {
-                const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', userId.toString());
+                const docRef = doc(dbFirestore, 'pmb_users', userId.toString());
                 await deleteDoc(docRef);
                 showToast('Data berhasil dihapus dari sistem Cloud.', 'success');
               } catch(err) { showToast('Gagal menghapus data cloud.', 'error'); }
@@ -310,9 +314,9 @@
       };
 
       const handleUpdateUser = async (updatedUserData) => {
-        if (isFirebaseActive && userAuth) {
+        if (isFirebaseActive) {
             try {
-               const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', updatedUserData.id.toString());
+               const docRef = doc(dbFirestore, 'pmb_users', updatedUserData.id.toString());
                await updateDoc(docRef, updatedUserData);
                showToast('Data calon mahasiswa berhasil diperbarui di Cloud!', 'success');
             } catch(err) { showToast('Gagal memperbarui data.', 'error'); }
