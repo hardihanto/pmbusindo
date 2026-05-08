@@ -136,26 +136,23 @@
             const clone = sourceElement.cloneNode(true);
             clone.style.display = 'block'; 
             
-            // PERBAIKAN: Lempar div ke luar layar agar tidak merusak UI, 
-            // set ukuran presisi pixel standar A4 (96dpi) agar html2canvas tidak memotongnya
+            // PERBAIKAN: Biarkan lebar elemen natural dan pas di kontainer
             const wrapper = document.createElement('div');
             wrapper.style.position = 'absolute';
             wrapper.style.left = '-15000px'; // Lempar jauh dari layar visual
             wrapper.style.top = '0';
             wrapper.style.backgroundColor = '#ffffff'; // Wajib putih pekat
-            wrapper.style.width = isLandscape ? '1123px' : '794px'; 
             wrapper.style.padding = '0';
 
             wrapper.appendChild(clone);
             document.body.appendChild(wrapper);
 
             const opt = {
-              margin:       [10, 10, 10, 10], // Margin aman atas, kiri, bawah, kanan (mm)
+              margin:       10, // Margin 1cm di kiri, kanan, atas, dan bawah
               filename:     filename,
               image:        { type: 'jpeg', quality: 1 },
-              html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: isLandscape ? 1123 : 794 },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' },
-              pagebreak:    { mode: ['css', 'legacy'] } // Mencegah elemen terbelah dua halaman
+              html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, // Hapus windowWidth agar ukuran canvas akurat dengan elemen
+              jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
             };
 
             // Merender elemen kloning yang 100% solid & anti-cut off
@@ -749,7 +746,7 @@
 
           {/* TEMPLATE PDF MURNI */}
           <div style={{ display: 'none' }}>
-            <div id="pdf-formulir-template" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
+            <div id="pdf-formulir-template" style={{ width: '750px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box', margin: 'auto' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
                   <h1 className="text-2xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
@@ -1064,7 +1061,7 @@
 
           {/* TEMPLATE PDF MURNI */}
           <div style={{ display: 'none' }}>
-            <div id="pdf-formulir-template-dashboard" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
+            <div id="pdf-formulir-template-dashboard" style={{ width: '750px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box', margin: 'auto' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
                   <h1 className="text-2xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
@@ -1107,7 +1104,7 @@
               </div>
             </div>
 
-            <div id="pdf-invoice-template" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left relative">
+            <div id="pdf-invoice-template" style={{ width: '750px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box', margin: 'auto' }} className="font-sans text-left relative">
               <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none z-0">
                  <div className="text-8xl font-black transform -rotate-45 tracking-widest uppercase">LUNAS</div>
               </div>
@@ -1381,7 +1378,7 @@
           <div style={{ display: 'none' }}>
             
             {/* Laporan Admin Lanskap (Lebar A4 Lanskap 1123px) */}
-            <div id="pdf-database-template" style={{ width: '1123px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
+            <div id="pdf-database-template" style={{ width: '1050px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box', margin: 'auto' }} className="font-sans text-left">
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold uppercase text-red-800">Laporan Database Pendaftaran Mahasiswa Baru</h1>
                 <p className="text-lg font-bold">UNIVERSITAS SEHATI INDONESIA (USINDO)</p>
