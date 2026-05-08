@@ -61,22 +61,41 @@
     const { useState, useEffect, useRef } = React;
 
     // ==============================================================================
+    // KONFIGURASI DATABASE CLOUD FIREBASE (PENTING UNTUK HOSTING SENDIRI)
+    // ==============================================================================
+    // Jika file ini diunduh & dijalankan di hosting milik Anda sendiri, ganti 'null' 
+    // di bawah dengan konfigurasi Firebase Anda agar data tersimpan selamanya.
+    const CUSTOM_FIREBASE_CONFIG = null; 
+    /* Contoh Cara Mengisi:
+    const CUSTOM_FIREBASE_CONFIG = {
+      apiKey: "AIzaSy...",
+      authDomain: "app-anda.firebaseapp.com",
+      projectId: "app-anda",
+      storageBucket: "app-anda.appspot.com",
+      messagingSenderId: "12345",
+      appId: "1:12345:web:abcde"
+    };
+    */
+
+    // ==============================================================================
     // SISTEM HYBRID CLOUD & LOCAL DB (Pencegah Error Blank Screen)
     // ==============================================================================
     let app, auth, dbFirestore, appId;
     let isFirebaseActive = false;
 
     try {
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-            const firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-            app = initializeApp(firebaseConfig);
+        const envConfig = typeof __firebase_config !== 'undefined' ? (typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config) : null;
+        const finalConfig = CUSTOM_FIREBASE_CONFIG || envConfig;
+
+        if (finalConfig) {
+            app = initializeApp(finalConfig);
             auth = getAuth(app);
             dbFirestore = getFirestore(app);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            appId = CUSTOM_FIREBASE_CONFIG ? 'custom-app' : (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
             isFirebaseActive = true;
-            console.log("Status: Cloud Database Aktif");
+            console.log("Status: Cloud Database Aktif (Data akan tersimpan permanen)");
         } else {
-            console.warn("Status: Menggunakan Local Database Offline");
+            console.warn("Status: Menggunakan Local Database Offline (Data hilang jika browser ditutup/pindah browser). Masukkan CUSTOM_FIREBASE_CONFIG untuk menyimpan permanen.");
         }
     } catch(e) {
         console.warn("Koneksi Cloud gagal, beralih ke Mode Offline aman.", e);
@@ -98,7 +117,7 @@
     };
 
     // ==============================================================================
-    // FUNGSI PDF REVOLUSIONER (FIXED PHANTOM - 100% Anti Blank & Tembus Pandang)
+    // FUNGSI PDF REVOLUSIONER (FIXED PHANTOM - 100% Anti Blank & RAPIH)
     // ==============================================================================
     const exportPDFHelper = (elementId, filename, isLandscape = false) => {
         return new Promise((resolve, reject) => {
@@ -117,28 +136,29 @@
             const clone = sourceElement.cloneNode(true);
             clone.style.display = 'block'; 
             
-            // PERBAIKAN: Hapus opacity: 0.001 agar PDF tidak ter-render putih polos
-            // Gunakan absolute & z-index minus untuk menyembunyikannya di belakang UI tanpa membuatnya transparan
+            // PERBAIKAN: Lempar div ke luar layar agar tidak merusak UI, 
+            // set ukuran presisi pixel standar A4 (96dpi) agar html2canvas tidak memotongnya
             const wrapper = document.createElement('div');
             wrapper.style.position = 'absolute';
+            wrapper.style.left = '-15000px'; // Lempar jauh dari layar visual
             wrapper.style.top = '0';
-            wrapper.style.left = '0';
-            wrapper.style.zIndex = '-9999'; // Sembunyikan di layer paling belakang
             wrapper.style.backgroundColor = '#ffffff'; // Wajib putih pekat
-            wrapper.style.width = isLandscape ? '1120px' : '800px';
+            wrapper.style.width = isLandscape ? '1123px' : '794px'; 
+            wrapper.style.padding = '0';
 
             wrapper.appendChild(clone);
             document.body.appendChild(wrapper);
 
             const opt = {
-              margin:       15,
+              margin:       [10, 10, 10, 10], // Margin aman atas, kiri, bawah, kanan (mm)
               filename:     filename,
-              image:        { type: 'jpeg', quality: 0.98 },
-              html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
+              image:        { type: 'jpeg', quality: 1 },
+              html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: isLandscape ? 1123 : 794 },
+              jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' },
+              pagebreak:    { mode: ['css', 'legacy'] } // Mencegah elemen terbelah dua halaman
             };
 
-            // Merender elemen kloning yang 100% solid
+            // Merender elemen kloning yang 100% solid & anti-cut off
             window.html2pdf().set(opt).from(clone).save().then(() => {
                 document.body.removeChild(wrapper);
                 resolve();
@@ -729,46 +749,44 @@
 
           {/* TEMPLATE PDF MURNI */}
           <div style={{ display: 'none' }}>
-            <div id="pdf-formulir-template" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
+            <div id="pdf-formulir-template" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
-                  <h1 className="text-xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
+                  <h1 className="text-2xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
                   <p className="text-sm mt-1">Jl. Raya Kosambi - Telagasari Dusun Kawali, Pancawati, Kec. Klari, Karawang</p>
                   <p className="text-sm">Telp/WA: 081929009212 | IG: @usindo.id | Web: www.usindo.ac.id</p>
                 </div>
               </div>
 
-              <h2 className="text-lg font-bold text-center uppercase mb-8 decoration-solid underline">Bukti Pendaftaran Mahasiswa Baru 2026/2027</h2>
+              <h2 className="text-xl font-bold text-center uppercase mb-8 decoration-solid underline">Bukti Pendaftaran Mahasiswa Baru 2026/2027</h2>
 
-              <table className="w-full mb-8 text-left border-collapse text-sm">
+              <table className="w-full mb-8 text-left border-collapse text-base" style={{ pageBreakInside: 'avoid' }}>
                 <tbody>
-                  <tr><td className="w-1/3 py-2 font-semibold">Nomor Registrasi</td><td className="w-4">:</td><td className="font-mono font-bold">PMB-{user.id}</td></tr>
-                  <tr><td className="py-2 font-semibold">Tanggal Daftar</td><td>:</td><td>{user.tanggalDaftar}</td></tr>
-                  <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
-                  <tr><td className="py-2 font-semibold">Nama Lengkap</td><td>:</td><td className="font-bold uppercase">{user.nama}</td></tr>
-                  <tr><td className="py-2 font-semibold">NIK / NISN</td><td>:</td><td>{user.nik} / {user.nisn}</td></tr>
-                  <tr><td className="py-2 font-semibold">Tempat, Tanggal Lahir</td><td>:</td><td>{user.tempatLahir}, {user.tanggalLahir}</td></tr>
-                  <tr><td className="py-2 font-semibold">Jenis Kelamin / Agama</td><td>:</td><td>{user.jenisKelamin} / {user.agama}</td></tr>
-                  <tr><td className="py-2 font-semibold align-top">Alamat Lengkap</td><td className="align-top">:</td><td>{user.alamat}</td></tr>
-                  <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
-                  <tr><td className="py-2 font-semibold">Asal Sekolah</td><td>:</td><td>{user.asalSekolah} (Jurusan: {user.jurusanSekolah})</td></tr>
-                  <tr><td className="py-2 font-semibold">Pilihan Program Studi</td><td>:</td><td className="font-bold text-red-700">{user.programStudi}</td></tr>
-                  <tr><td className="py-2 font-semibold">Email / No. HP</td><td>:</td><td>{user.email} / {user.noHp}</td></tr>
+                  <tr className="bg-slate-50"><td className="w-1/3 p-3 font-semibold border border-slate-300">Nomor Registrasi</td><td className="w-4 p-3 border-y border-slate-300">:</td><td className="p-3 font-mono font-bold border border-slate-300">PMB-{user.id}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Tanggal Daftar</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.tanggalDaftar}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Nama Lengkap</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 font-bold uppercase border border-slate-300">{user.nama}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">NIK / NISN</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.nik} / {user.nisn}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Tempat, Tanggal Lahir</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.tempatLahir}, {user.tanggalLahir}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Jenis Kelamin / Agama</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.jenisKelamin} / {user.agama}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold align-top border border-slate-300">Alamat Lengkap</td><td className="p-3 align-top border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.alamat}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Asal Sekolah</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.asalSekolah} (Jurusan: {user.jurusanSekolah})</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Pilihan Program Studi</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 font-bold text-red-700 border border-slate-300">{user.programStudi}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Email / No. HP</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{user.email} / {user.noHp}</td></tr>
                 </tbody>
               </table>
 
-              <div className="mt-6 text-justify text-sm mb-12 leading-relaxed text-slate-800">
-                <p>Menyatakan bahwa data yang diisikan adalah benar dan dapat dipertanggungjawabkan. Formulir ini merupakan bukti sah pendaftaran online calon mahasiswa baru Universitas Sehati Indonesia (USINDO).</p>
+              <div className="mt-6 text-justify text-base mb-12 leading-relaxed text-slate-800 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <p><strong>Pernyataan:</strong> Menyatakan bahwa data yang diisikan adalah benar dan dapat dipertanggungjawabkan. Formulir ini merupakan bukti sah pendaftaran online calon mahasiswa baru Universitas Sehati Indonesia (USINDO).</p>
               </div>
 
-              <div className="flex justify-between mt-8 text-sm">
+              <div className="flex justify-between mt-8 text-base" style={{ pageBreakInside: 'avoid' }}>
                  <div className="text-center w-1/3 flex flex-col justify-end">
-                  <p className="mb-20">Calon Mahasiswa,</p>
+                  <p className="mb-24">Calon Mahasiswa,</p>
                   <p className="font-bold underline uppercase">{user.nama}</p>
                 </div>
                 <div className="text-center w-1/3">
                   <p>Karawang, {user.tanggalDaftar}</p>
-                  <p className="mb-20">Mengetahui, <br/>Panitia PMB</p>
+                  <p className="mb-24">Mengetahui, <br/>Panitia PMB</p>
                   <p className="font-bold underline">Hardi Hanto</p>
                 </div>
               </div>
@@ -1046,56 +1064,54 @@
 
           {/* TEMPLATE PDF MURNI */}
           <div style={{ display: 'none' }}>
-            <div id="pdf-formulir-template-dashboard" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
+            <div id="pdf-formulir-template-dashboard" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
               <div className="border-b-4 border-double border-red-800 pb-4 mb-6 flex items-center justify-between">
                 <div className="flex-grow text-center">
-                  <h1 className="text-xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
+                  <h1 className="text-2xl font-bold uppercase tracking-widest text-red-800">Universitas Sehati Indonesia (USINDO)</h1>
                   <p className="text-sm mt-1">Jl. Raya Kosambi - Telagasari Dusun Kawali, Pancawati, Kec. Klari, Karawang</p>
                   <p className="text-sm">Telp/WA: 081929009212 | IG: @usindo.id | Web: www.usindo.ac.id</p>
                 </div>
               </div>
 
-              <h2 className="text-lg font-bold text-center uppercase mb-8 decoration-solid underline">Bukti Pendaftaran Mahasiswa Baru 2026/2027</h2>
+              <h2 className="text-xl font-bold text-center uppercase mb-8 decoration-solid underline">Bukti Pendaftaran Mahasiswa Baru 2026/2027</h2>
 
-              <table className="w-full mb-8 text-left border-collapse text-sm">
+              <table className="w-full mb-8 text-left border-collapse text-base" style={{ pageBreakInside: 'avoid' }}>
                 <tbody>
-                  <tr><td className="w-1/3 py-2 font-semibold">Nomor Registrasi</td><td className="w-4">:</td><td className="font-mono font-bold">PMB-{student.id}</td></tr>
-                  <tr><td className="py-2 font-semibold">Tanggal Daftar</td><td>:</td><td>{student.tanggalDaftar}</td></tr>
-                  <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
-                  <tr><td className="py-2 font-semibold">Nama Lengkap</td><td>:</td><td className="font-bold uppercase">{student.nama}</td></tr>
-                  <tr><td className="py-2 font-semibold">NIK / NISN</td><td>:</td><td>{student.nik} / {student.nisn}</td></tr>
-                  <tr><td className="py-2 font-semibold">Tempat, Tanggal Lahir</td><td>:</td><td>{student.tempatLahir}, {student.tanggalLahir}</td></tr>
-                  <tr><td className="py-2 font-semibold">Jenis Kelamin / Agama</td><td>:</td><td>{student.jenisKelamin} / {student.agama}</td></tr>
-                  <tr><td className="py-2 font-semibold align-top">Alamat Lengkap</td><td className="align-top">:</td><td>{student.alamat}</td></tr>
-                  <tr><td colSpan="3" className="py-3"><hr className="border-slate-300"/></td></tr>
-                  <tr><td className="py-2 font-semibold">Asal Sekolah</td><td>:</td><td>{student.asalSekolah} (Jurusan: {student.jurusanSekolah})</td></tr>
-                  <tr><td className="py-2 font-semibold">Pilihan Program Studi</td><td>:</td><td className="font-bold text-red-700">{student.programStudi}</td></tr>
-                  <tr><td className="py-2 font-semibold">Email / No. HP</td><td>:</td><td>{student.email} / {student.noHp}</td></tr>
+                  <tr className="bg-slate-50"><td className="w-1/3 p-3 font-semibold border border-slate-300">Nomor Registrasi</td><td className="w-4 p-3 border-y border-slate-300">:</td><td className="p-3 font-mono font-bold border border-slate-300">PMB-{student.id}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Tanggal Daftar</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.tanggalDaftar}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Nama Lengkap</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 font-bold uppercase border border-slate-300">{student.nama}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">NIK / NISN</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.nik} / {student.nisn}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Tempat, Tanggal Lahir</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.tempatLahir}, {student.tanggalLahir}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Jenis Kelamin / Agama</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.jenisKelamin} / {student.agama}</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold align-top border border-slate-300">Alamat Lengkap</td><td className="p-3 align-top border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.alamat}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Asal Sekolah</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.asalSekolah} (Jurusan: {student.jurusanSekolah})</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-semibold border border-slate-300">Pilihan Program Studi</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 font-bold text-red-700 border border-slate-300">{student.programStudi}</td></tr>
+                  <tr><td className="p-3 font-semibold border border-slate-300">Email / No. HP</td><td className="p-3 border-y border-slate-300">:</td><td className="p-3 border border-slate-300">{student.email} / {student.noHp}</td></tr>
                 </tbody>
               </table>
 
-              <div className="mt-6 text-justify text-sm mb-12 leading-relaxed text-slate-800">
-                <p>Menyatakan bahwa data yang diisikan adalah benar dan dapat dipertanggungjawabkan. Formulir ini merupakan bukti sah pendaftaran online calon mahasiswa baru Universitas Sehati Indonesia (USINDO).</p>
+              <div className="mt-6 text-justify text-base mb-12 leading-relaxed text-slate-800 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <p><strong>Pernyataan:</strong> Menyatakan bahwa data yang diisikan adalah benar dan dapat dipertanggungjawabkan. Formulir ini merupakan bukti sah pendaftaran online calon mahasiswa baru Universitas Sehati Indonesia (USINDO).</p>
               </div>
 
-              <div className="flex justify-between mt-8 text-sm">
+              <div className="flex justify-between mt-8 text-base" style={{ pageBreakInside: 'avoid' }}>
                  <div className="text-center w-1/3 flex flex-col justify-end">
-                  <p className="mb-20">Calon Mahasiswa,</p>
+                  <p className="mb-24">Calon Mahasiswa,</p>
                   <p className="font-bold underline uppercase">{student.nama}</p>
                 </div>
                 <div className="text-center w-1/3">
                   <p>Karawang, {student.tanggalDaftar}</p>
-                  <p className="mb-20">Mengetahui, <br/>Panitia PMB</p>
+                  <p className="mb-24">Mengetahui, <br/>Panitia PMB</p>
                   <p className="font-bold underline">Hardi Hanto</p>
                 </div>
               </div>
             </div>
 
-            <div id="pdf-invoice-template" style={{ width: '800px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left relative">
+            <div id="pdf-invoice-template" style={{ width: '794px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left relative">
               <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none z-0">
                  <div className="text-8xl font-black transform -rotate-45 tracking-widest uppercase">LUNAS</div>
               </div>
-              <div className="relative z-10">
+              <div className="relative z-10" style={{ pageBreakInside: 'avoid' }}>
                 <div className="border-b-4 border-solid border-red-800 pb-4 mb-8 flex items-center justify-between">
                   <div className="flex-grow text-left">
                     <h1 className="text-2xl font-black tracking-wider text-red-800">UNIVERSITAS SEHATI INDONESIA</h1>
@@ -1104,25 +1120,25 @@
                   </div>
                 </div>
 
-                <div className="text-center mb-8">
+                <div className="text-center mb-10">
                   <h2 className="text-3xl font-extrabold uppercase mb-2 text-green-700 tracking-widest">INVOICE PEMBAYARAN</h2>
                   <div className="inline-block border-4 border-green-600 text-green-700 font-black px-6 py-2 text-2xl rounded-lg transform -rotate-3 mt-2 tracking-widest">
                     L U N A S
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-300 mb-8">
-                  <table className="w-full text-left text-sm">
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-300 mb-8">
+                  <table className="w-full text-left text-base">
                     <tbody>
-                      <tr><td className="w-1/4 py-1.5 font-semibold text-slate-700">No. Tagihan / Reg</td><td className="w-4">:</td><td className="font-mono font-bold text-slate-900">INV-PMB-{student.id}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-slate-700">Nama Pendaftar</td><td>:</td><td className="font-bold uppercase text-slate-900">{student.nama}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-slate-700">Program Studi</td><td>:</td><td className="text-slate-900 font-medium">{student.programStudi}</td></tr>
-                      <tr><td className="py-1.5 font-semibold text-slate-700">Tanggal Verifikasi</td><td>:</td><td className="text-slate-900">{student.tanggalDikonfirmasi || new Date().toLocaleDateString('id-ID')}</td></tr>
+                      <tr><td className="w-1/3 py-2 font-semibold text-slate-700">No. Tagihan / Reg</td><td className="w-4">:</td><td className="font-mono font-bold text-slate-900">INV-PMB-{student.id}</td></tr>
+                      <tr><td className="py-2 font-semibold text-slate-700">Nama Pendaftar</td><td>:</td><td className="font-bold uppercase text-slate-900">{student.nama}</td></tr>
+                      <tr><td className="py-2 font-semibold text-slate-700">Program Studi</td><td>:</td><td className="text-slate-900 font-medium">{student.programStudi}</td></tr>
+                      <tr><td className="py-2 font-semibold text-slate-700">Tanggal Verifikasi</td><td>:</td><td className="text-slate-900">{student.tanggalDikonfirmasi || new Date().toLocaleDateString('id-ID')}</td></tr>
                     </tbody>
                   </table>
                 </div>
 
-                <table className="w-full text-sm border border-slate-400 mb-12">
+                <table className="w-full text-base border-collapse border border-slate-400 mb-12">
                    <thead className="bg-slate-800 text-white">
                      <tr>
                        <th className="border border-slate-400 p-4 text-left font-bold">Keterangan / Deskripsi Pembayaran</th>
@@ -1131,28 +1147,28 @@
                    </thead>
                    <tbody>
                      <tr>
-                       <td className="border border-slate-400 p-5 text-base">
+                       <td className="border border-slate-400 p-6 text-base leading-relaxed">
                          Biaya Registrasi Pendaftaran Mahasiswa Baru Tahun Akademik 2026/2027<br/>
-                         <span className="text-sm text-slate-600 font-medium mt-1 inline-block">Program Studi: {student.programStudi}</span>
+                         <span className="text-sm text-slate-600 font-medium mt-2 inline-block bg-slate-100 p-2 rounded">Program Studi: {student.programStudi}</span>
                        </td>
-                       <td className="border border-slate-400 p-5 text-right font-bold text-lg">{biayaTertagih}</td>
+                       <td className="border border-slate-400 p-6 text-right font-bold text-xl align-top">{biayaTertagih}</td>
                      </tr>
-                     <tr className="bg-slate-100 border-t-2 border-slate-500">
+                     <tr className="bg-slate-100 border-t-4 border-slate-500">
                        <td className="border border-slate-400 p-4 text-right font-black text-slate-900 text-lg">TOTAL DIBAYARKAN</td>
-                       <td className="border border-slate-400 p-4 text-right text-xl font-black text-green-700">{biayaTertagih}</td>
+                       <td className="border border-slate-400 p-4 text-right text-2xl font-black text-green-700">{biayaTertagih}</td>
                      </tr>
                    </tbody>
                 </table>
 
-                <div className="flex justify-between items-end mt-12 text-sm">
-                  <div className="w-1/2 text-slate-600 text-xs italic">
+                <div className="flex justify-between items-end mt-12 text-base">
+                  <div className="w-1/2 text-slate-600 text-sm italic">
                     * Invoice ini sah dan dicetak otomatis secara elektronik.<br/>
                     * Simpan invoice ini sebagai bukti sah pembayaran Anda.
                   </div>
                   <div className="text-center w-1/3">
                     <p>Karawang, {student.tanggalDikonfirmasi || new Date().toLocaleDateString('id-ID')}</p>
                     <p className="mb-24 mt-1 font-semibold">Bagian Administrasi Keuangan</p>
-                    <p className="font-bold underline text-base">Panitia PMB USINDO</p>
+                    <p className="font-bold underline text-lg">Panitia PMB USINDO</p>
                   </div>
                 </div>
               </div>
@@ -1364,8 +1380,8 @@
           {/* TEMPLATE PDF MURNI */}
           <div style={{ display: 'none' }}>
             
-            {/* Laporan Admin Lanskap (Lebar A4 Lanskap 1120px) */}
-            <div id="pdf-database-template" style={{ width: '1120px', backgroundColor: 'white', padding: '30px', color: 'black' }} className="font-sans text-left">
+            {/* Laporan Admin Lanskap (Lebar A4 Lanskap 1123px) */}
+            <div id="pdf-database-template" style={{ width: '1123px', backgroundColor: 'white', padding: '40px', color: 'black', boxSizing: 'border-box' }} className="font-sans text-left">
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold uppercase text-red-800">Laporan Database Pendaftaran Mahasiswa Baru</h1>
                 <p className="text-lg font-bold">UNIVERSITAS SEHATI INDONESIA (USINDO)</p>
@@ -1373,40 +1389,40 @@
                 <p className="text-sm mt-2">Diekspor pada: {new Date().toLocaleString('id-ID')}</p>
               </div>
 
-              <table className="w-full text-xs text-left border-collapse border border-slate-400">
+              <table className="w-full text-sm text-left border-collapse border border-slate-400">
                 <thead>
                   <tr className="bg-slate-200">
-                    <th className="border border-slate-400 p-2 text-center w-8">No</th>
-                    <th className="border border-slate-400 p-2">No. Registrasi</th>
-                    <th className="border border-slate-400 p-2">Nama Lengkap</th>
-                    <th className="border border-slate-400 p-2">NISN / NIK</th>
-                    <th className="border border-slate-400 p-2">Program Studi</th>
-                    <th className="border border-slate-400 p-2">Status</th>
-                    <th className="border border-slate-400 p-2">No. HP</th>
-                    <th className="border border-slate-400 p-2">Tgl Daftar</th>
+                    <th className="border border-slate-400 p-3 text-center w-10">No</th>
+                    <th className="border border-slate-400 p-3">No. Registrasi</th>
+                    <th className="border border-slate-400 p-3">Nama Lengkap</th>
+                    <th className="border border-slate-400 p-3">NISN / NIK</th>
+                    <th className="border border-slate-400 p-3">Program Studi</th>
+                    <th className="border border-slate-400 p-3">Status</th>
+                    <th className="border border-slate-400 p-3">No. HP</th>
+                    <th className="border border-slate-400 p-3">Tgl Daftar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {db.map((user, index) => (
-                    <tr key={user.id}>
-                      <td className="border border-slate-400 p-2 text-center text-slate-800">{index + 1}</td>
-                      <td className="border border-slate-400 p-2 font-mono text-slate-800">PMB-{user.id}</td>
-                      <td className="border border-slate-400 p-2 uppercase text-slate-800 font-bold">{user.nama}</td>
-                      <td className="border border-slate-400 p-2 text-slate-800">{user.nisn} / {user.nik}</td>
-                      <td className="border border-slate-400 p-2 text-slate-800">{user.programStudi}</td>
-                      <td className="border border-slate-400 p-2 text-slate-800">{user.statusPembayaran === 'Dikonfirmasi' ? 'Lunas' : (user.statusPembayaran || 'Belum Bayar')}</td>
-                      <td className="border border-slate-400 p-2 text-slate-800">{user.noHp}</td>
-                      <td className="border border-slate-400 p-2 text-slate-800">{user.tanggalDaftar}</td>
+                    <tr key={user.id} style={{ pageBreakInside: 'avoid' }} className="nth-child(even):bg-slate-50">
+                      <td className="border border-slate-400 p-3 text-center text-slate-800">{index + 1}</td>
+                      <td className="border border-slate-400 p-3 font-mono text-slate-800">PMB-{user.id}</td>
+                      <td className="border border-slate-400 p-3 uppercase text-slate-800 font-bold">{user.nama}</td>
+                      <td className="border border-slate-400 p-3 text-slate-800">{user.nisn}<br/><span className="text-xs text-slate-500">{user.nik}</span></td>
+                      <td className="border border-slate-400 p-3 text-slate-800">{user.programStudi}</td>
+                      <td className="border border-slate-400 p-3 text-slate-800 font-semibold">{user.statusPembayaran === 'Dikonfirmasi' ? 'Lunas' : (user.statusPembayaran || 'Belum Bayar')}</td>
+                      <td className="border border-slate-400 p-3 text-slate-800">{user.noHp}</td>
+                      <td className="border border-slate-400 p-3 text-slate-800">{user.tanggalDaftar}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="flex justify-end mt-12 pr-10">
+              <div className="flex justify-end mt-12 pr-10" style={{ pageBreakInside: 'avoid' }}>
                 <div className="text-center text-slate-900">
                   <p>Mengetahui,</p>
-                  <p className="mb-20">Panitia PMB</p>
-                  <p className="font-bold underline">Hardi Hanto</p>
+                  <p className="mb-24 mt-2">Panitia PMB</p>
+                  <p className="font-bold underline text-lg">Hardi Hanto</p>
                 </div>
               </div>
             </div>
