@@ -65,7 +65,15 @@
     // ==============================================================================
     // Jika file ini diunduh & dijalankan di hosting milik Anda sendiri, ganti 'null' 
     // di bawah dengan konfigurasi Firebase Anda agar data tersimpan selamanya.
-    const CUSTOM_FIREBASE_CONFIG = null; 
+    const CUSTOM_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBu-m0yJAHG8yWLD9N2_tTaZkANwm8d6lE",
+  authDomain: "utopian-hearth-425509-e2.firebaseapp.com",
+  projectId: "utopian-hearth-425509-e2",
+  storageBucket: "utopian-hearth-425509-e2.firebasestorage.app",
+  messagingSenderId: "226044792739",
+  appId: "1:226044792739:web:5951f12e7ce43f844b9416",
+  measurementId: "G-JHV5LVJNPJ"
+}; 
     /* Contoh Cara Mengisi:
     const CUSTOM_FIREBASE_CONFIG = {
       apiKey: "AIzaSy...",
@@ -240,6 +248,7 @@
             try {
               const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'pmb_users', newId.toString());
               await setDoc(docRef, newUser);
+              showToast('Data Berhasil Disimpan ke Cloud Realtime!', 'success');
             } catch(err) {
               showToast('Gagal menyimpan ke Cloud Server!', 'error');
               return;
@@ -249,12 +258,12 @@
             const newDb = [newUser, ...db];
             setDb(newDb);
             localStorage.setItem('pmb_database', JSON.stringify(newDb));
+            showToast('Tersimpan di Memori Lokal (Hanya Browser ini)', 'info');
         }
 
         setCurrentUser(newUser);
         setLoggedInStudent(newUser); 
         setCurrentView('success');
-        showToast('Data Pendaftaran Berhasil Disimpan!', 'success');
         window.scrollTo(0, 0);
       };
 
@@ -1276,6 +1285,12 @@
 
       return (
         <div className="max-w-[90rem] mx-auto w-full p-4 sm:p-6 lg:p-8 my-8">
+          {!isFirebaseActive && (
+            <div className="bg-red-100 border-l-4 border-red-600 text-red-800 p-4 mb-6 rounded shadow-sm">
+              <h4 className="font-bold text-lg mb-1"><i className="fa-solid fa-triangle-exclamation"></i> MODE OFFLINE AKTIF (Data Tidak Tersimpan Permanen)</h4>
+              <p className="text-sm">Sistem mendeteksi file HTML ini dijalankan secara mandiri tanpa konfigurasi Database Cloud. Data pendaftar saat ini hanya tersimpan sementara di <strong>memori browser perangkat ini (Local Storage)</strong> dan tidak bisa diakses di komputer atau HP lain. Untuk membuat database online permanen yang sinkron di mana saja, Anda <strong>wajib</strong> membuat proyek <a href="https://firebase.google.com/" target="_blank" className="underline font-bold text-blue-600">Google Firebase (Gratis)</a> dan memasukkan kodenya ke variabel <code>CUSTOM_FIREBASE_CONFIG</code> di dalam kode sumber.</p>
+            </div>
+          )}
           {/* Modal Edit Data */}
           {editingUser && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 overflow-y-auto">
