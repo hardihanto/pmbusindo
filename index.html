@@ -1034,24 +1034,24 @@
                   <p className="text-slate-600 mb-4">Untuk menyelesaikan proses pendaftaran di prodi <strong>{student.programStudi}</strong>, silakan lakukan transfer biaya awal pendaftaran ke rekening resmi universitas di bawah ini:</p>
                   
                   {/* Rincian Tagihan Awal */}
-                  <div className="bg-white border border-blue-200 rounded-lg p-4 mb-6 shadow-sm overflow-hidden">
-                    <h4 className="font-bold text-slate-800 border-b pb-2 mb-3">Rincian Tagihan Awal</h4>
+                  <div className="bg-white border border-blue-200 rounded-lg p-5 mb-6 shadow-sm">
+                    <h4 className="font-bold text-slate-800 border-b border-blue-100 pb-3 mb-4 text-base">Rincian Tagihan Awal</h4>
                     <div className="space-y-3 text-sm text-slate-600">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                        <span>1. Formulir Pendaftaran</span> 
-                        <span className="font-semibold text-slate-800">{formatRupiah(BIAYA_PENDAFTARAN)}</span>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="leading-tight">1. Formulir Pendaftaran</span> 
+                        <span className="font-semibold text-slate-800 whitespace-nowrap">{formatRupiah(BIAYA_PENDAFTARAN)}</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                        <span>2. Biaya Registrasi Tahunan</span> 
-                        <span className="font-semibold text-slate-800">{formatRupiah(prodiData.registrasiTahunan)}</span>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="leading-tight">2. Biaya Registrasi Tahunan</span> 
+                        <span className="font-semibold text-slate-800 whitespace-nowrap">{formatRupiah(prodiData.registrasiTahunan)}</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                        <span>3. Biaya SPP Bulanan</span> 
-                        <span className="font-semibold text-slate-800">{formatRupiah(prodiData.sppBulanan)}</span>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="leading-tight">3. Biaya SPP Bulanan</span> 
+                        <span className="font-semibold text-slate-800 whitespace-nowrap">{formatRupiah(prodiData.sppBulanan)}</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-3 mt-3 border-t-2 border-slate-100 font-bold text-red-700 text-base gap-1">
+                      <div className="flex justify-between items-center pt-3 mt-4 border-t-2 border-slate-200 font-bold text-red-700 text-base gap-2">
                         <span>Total Keseluruhan</span> 
-                        <span className="text-lg">{biayaTertagih}</span>
+                        <span className="text-lg whitespace-nowrap">{biayaTertagih}</span>
                       </div>
                     </div>
                   </div>
