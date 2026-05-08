@@ -63,27 +63,15 @@
     // ==============================================================================
     // KONFIGURASI DATABASE CLOUD FIREBASE (PENTING UNTUK HOSTING SENDIRI)
     // ==============================================================================
-    // Jika file ini diunduh & dijalankan di hosting milik Anda sendiri, ganti 'null' 
-    // di bawah dengan konfigurasi Firebase Anda agar data tersimpan selamanya.
     const CUSTOM_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBu-m0yJAHG8yWLD9N2_tTaZkANwm8d6lE",
-  authDomain: "utopian-hearth-425509-e2.firebaseapp.com",
-  projectId: "utopian-hearth-425509-e2",
-  storageBucket: "utopian-hearth-425509-e2.firebasestorage.app",
-  messagingSenderId: "226044792739",
-  appId: "1:226044792739:web:5951f12e7ce43f844b9416",
-  measurementId: "G-JHV5LVJNPJ"
-}; 
-    /* Contoh Cara Mengisi:
-    const CUSTOM_FIREBASE_CONFIG = {
-      apiKey: "AIzaSy...",
-      authDomain: "app-anda.firebaseapp.com",
-      projectId: "app-anda",
-      storageBucket: "app-anda.appspot.com",
-      messagingSenderId: "12345",
-      appId: "1:12345:web:abcde"
-    };
-    */
+      apiKey: "AIzaSyBu-m0yJAHG8yWLD9N2_tTaZkANwm8d6lE",
+      authDomain: "utopian-hearth-425509-e2.firebaseapp.com",
+      projectId: "utopian-hearth-425509-e2",
+      storageBucket: "utopian-hearth-425509-e2.firebasestorage.app",
+      messagingSenderId: "226044792739",
+      appId: "1:226044792739:web:5951f12e7ce43f844b9416",
+      measurementId: "G-JHV5LVJNPJ"
+    }; 
 
     // ==============================================================================
     // SISTEM HYBRID CLOUD & LOCAL DB (Pencegah Error Blank Screen)
@@ -159,7 +147,7 @@
               margin:       10, // Margin 1cm di kiri, kanan, atas, dan bawah
               filename:     filename,
               image:        { type: 'jpeg', quality: 1 },
-              html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, // Hapus windowWidth agar ukuran canvas akurat dengan elemen
+              html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
               jsPDF:        { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' }
             };
 
@@ -211,12 +199,28 @@
 
         const initAuth = async () => {
           try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            // PERBAIKAN BUG AUTH:
+            // Jika pengguna menggunakan konfigurasi pribadi (CUSTOM_FIREBASE_CONFIG), 
+            // kita harus mencegah sistem masuk menggunakan __initial_auth_token karena token tersebut
+            // berasal dari environment default dan tidak akan dikenali oleh database baru pengguna.
+            if (CUSTOM_FIREBASE_CONFIG) {
+              await signInAnonymously(auth);
+            } else if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
               await signInWithCustomToken(auth, __initial_auth_token);
             } else {
               await signInAnonymously(auth);
             }
-          } catch(e) { console.error("Auth error:", e); }
+          } catch(e) { 
+            console.error("Auth error:", e); 
+            if (e.code === 'auth/operation-not-allowed') {
+               alert("PERINGATAN SISTEM LOGIN: Fitur 'Anonymous Sign-in' belum diaktifkan di Firebase Anda.\n\nTanpa ini, pengunjung tidak bisa menyimpan data ke database. Silakan aktifkan di menu Authentication Firebase.");
+            } else if (e.code === 'auth/configuration-not-found') {
+               alert("ERROR: LAYANAN AUTHENTICATION BELUM DIAKTIFKAN!\n\nSistem Firebase Anda belum memiliki layanan Login untuk memproses pengguna.\n\nSOLUSI WAJIB:\n1. Buka Firebase Console.\n2. Klik menu 'Authentication' di panel kiri.\n3. Klik tombol besar 'Get Started' (Mulai).\n4. Pilih tab 'Sign-in method', klik 'Anonymous' (Anonim).\n5. Aktifkan dan Simpan. Lalu muat ulang halaman ini.");
+            } else {
+               // Fallback terakhir dihilangkan agar tidak terjadi log error ganda
+               console.warn("Autentikasi gagal atau diabaikan. Bergantung pada Firestore public rules.");
+            }
+          }
         };
         initAuth();
 
@@ -228,14 +232,18 @@
       useEffect(() => {
         if (!isFirebaseActive) return;
 
-        // PERBAIKAN: Path disederhanakan agar lebih rapi untuk Database Pribadi
+        // Path disederhanakan agar lebih rapi untuk Database Pribadi
         const usersRef = collection(dbFirestore, 'pmb_users');
         const unsubscribe = onSnapshot(usersRef, (snapshot) => {
            const usersData = snapshot.docs.map(doc => doc.data());
            setDb(usersData.sort((a,b) => b.id - a.id));
         }, (error) => {
            console.error("Firestore Error:", error);
-           alert("GAGAL TERHUBUNG KE DATABASE!\n\nPesan Error: " + error.message + "\n\nSolusi Wajib:\n1. Pastikan Anda membuat 'Firestore Database' (bukan Realtime Database).\n2. Pastikan tab Rules sudah diubah menjadi 'allow read, write: if true;' lalu klik Publish.");
+           if (error.code === 'permission-denied') {
+             alert("AKSES DATABASE DITOLAK (Permission Denied)!\n\nAturan Keamanan (Rules) Firestore Anda masih mengunci database.\n\nSOLUSI WAJIB:\n1. Buka Firebase Console > Firestore Database > Tab Rules.\n2. Ubah kode menjadi: allow read, write: if true;\n3. Klik Publish.");
+           } else {
+             alert("GAGAL MENGAMBIL DATA: " + error.message);
+           }
         });
 
         return () => unsubscribe();
@@ -248,13 +256,17 @@
         
         if (isFirebaseActive) {
             try {
-              // PERBAIKAN: Path disederhanakan
+              // Path disederhanakan
               const docRef = doc(dbFirestore, 'pmb_users', newId.toString());
               await setDoc(docRef, newUser);
               showToast('Data Berhasil Disimpan ke Cloud Realtime!', 'success');
             } catch(err) {
               console.error("Error Simpan Firebase:", err);
-              alert("GAGAL MENYIMPAN DATA!\n\nPesan Error: " + err.message + "\n\nSolusi Wajib:\n1. Pastikan Anda membuat 'Firestore Database' (bukan Realtime Database).\n2. Pastikan tab Rules sudah diubah menjadi 'allow read, write: if true;' lalu klik Publish.");
+              if (err.code === 'permission-denied') {
+                alert("GAGAL MENYIMPAN: Akses Ditolak (Missing Permissions)!\n\nSistem Firebase Anda memblokir penyimpanan data ini.\n\nSOLUSI WAJIB:\n1. Buka Firebase Console > Firestore Database > klik tab Rules (Aturan).\n2. Hapus yang lama, ganti jadi: allow read, write: if true;\n3. Klik Publish / Terbitkan.");
+              } else {
+                alert("GAGAL MENYIMPAN DATA!\n\nPesan Error: " + err.message);
+              }
               return; // Mencegah masuk ke halaman Sukses jika data gagal terkirim ke server
             }
         } else {
